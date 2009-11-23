@@ -131,5 +131,5 @@ void stoke::game::run()
 
 int main()
 {
-    social_satan::main::instance().run();
+    stoke::game::instance().run();
 }
