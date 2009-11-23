@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="Stoke Game" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Linux Debug">
+				<Option output="../../../bin/linux_x86" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O3" />
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Linux Release">
+				<Option output="../../../bin/linux_x86" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Option use_console_runner="0" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add directory="../../../src" />
+		</Compiler>
+		<Linker>
+			<Add option="-s" />
+			<Add option="-lpthread" />
+			<Add option="-ldl" />
+			<Add option="-lpq" />
+			<Add library="libstdc++-4.5.a" />
+			<Add library="libmysqld.a" />
+			<Add library="libboost_regex.a" />
+			<Add library="libboost_thread.a" />
+			<Add library="libcurl.a" />
+		</Linker>
+		<Unit filename="../../src/main.cpp" />
+		<Unit filename="../../src/main.hpp" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+			<envvars />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
