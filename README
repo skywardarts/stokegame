@@ -13,8 +13,8 @@ The mainline has been compiled/tested with:
 Compiler: GCC 4.5
 Platform: Ubuntu 9.1 with Code::Blocks 8.02
 
-== Required Libraries
-Boost 1.40, Asio 1.4.1
+== Prerequisites
+Libraries: Boost 1.40, Asio 1.4.1
 
 == Templates
 
