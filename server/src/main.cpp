@@ -16,6 +16,10 @@ void stoke::game::run()
         client.receive(
         [self2, client2](nextgen::network::http_message response) // bugfix(daemn) lambda wont PBV, so temp PVR
         {
+            std::cout << "[stoke:game:run:server] Received data from HTTP client." << std::endl;
+
+            std::cout << response->raw_header_list << std::endl;
+            std::cout << response->content << std::endl;
 
         },
         []()

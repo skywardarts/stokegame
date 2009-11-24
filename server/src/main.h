@@ -680,14 +680,14 @@ namespace nextgen
                             self->network_layer_.set_port(port);
                         }
 
-                        public: bool is_connected() const
+                        public: virtual bool is_connected() const
                         {
                             auto self = *this;
 
                             return self->socket_.is_open();
                         }
 
-                        public: void cancel() const
+                        public: virtual void cancel() const
                         {
                             auto self = *this;
 
@@ -700,20 +700,7 @@ namespace nextgen
                             //    std::cout << "<ClientSocket> Guarded an invalid socket." << std::endl;
                         }
 
-                        public: void cancel(asio::error_code& error) const
-                        {
-                            auto self = *this;
-
-                            if(DEBUG_MESSAGES)
-                                std::cout << "<socket::cancel> Cancelling socket (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
-
-                            if(self->socket_.native() != asio::detail::invalid_socket)
-                                self->socket_.cancel(error);
-                            //else
-                            //    std::cout << "<ClientSocket> Guarded an invalid socket." << std::endl;
-                        }
-
-                        public: void close() const
+                        public: virtual void close() const
                         {
                             auto self = *this;
 
@@ -724,7 +711,7 @@ namespace nextgen
                                 self->socket_.close();
                         }
 
-                        public: size_t bytes_readable()
+                        public: virtual size_t bytes_readable()
                         {
                             auto self = *this;
 
@@ -917,10 +904,7 @@ namespace nextgen
                             if(DEBUG_MESSAGES)
                                 std::cout << "<socket::receive> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
-                            if(DEBUG_MESSAGES)
-                                std::cout << "<socket::receive> create timer (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
-
-                            std::function<void(asio::error_code const, uint32_t)> on_read = [=](asio::error_code const& error, uint32_t& total)
+                            auto on_read = [=](asio::error_code const& error, uint32_t total)
                             {
                                 if(DEBUG_MESSAGES)
                                     std::cout << "<socket::receive handler> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
@@ -937,24 +921,28 @@ namespace nextgen
 
                                 if(!error)
                                 {
-                                    successful_handler();
+                                    if(self.get_socket().available())
+                                    {
+                                        if(self->timeout_ > 0)
+                                        {
+                                            self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
+                                            self->timer_.async_wait(self->cancel_handler_);
+                                        }
+
+                                        self.receive(delimiter, stream, successful_handler, failure_handler);
+                                    }
+                                    else
+                                    {
+                                        successful_handler();
+                                    }
                                 }
-                                else if(error == asio::error::eof)
+                                /*else if(error == asio::error::eof)
                                 {
                                     if(DEBUG_MESSAGES4)
                                         std::cout << "<socket::receive handler> Read EOF (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                                     successful_handler();
-                                }
-                                else if(error == asio::error::operation_aborted)
-                                {
-                                    if(DEBUG_MESSAGES4)
-                                        std::cout << "<socket::receive handler> Receive operation aborted." << std::endl;
-
-                                    self.close();
-
-                                    failure_handler();
-                                }
+                                }*/
                                 else
                                 {
                                     if(DEBUG_MESSAGES4)
@@ -966,7 +954,7 @@ namespace nextgen
                                 }
                             };
 
-                            if(delimiter == "#all#")
+                            /*if(delimiter == "#all#")
                             {
                                 self.receive("#begin#", stream,
                                 [=]()
@@ -978,7 +966,7 @@ namespace nextgen
                                     failure_handler();
                                 });
                             }
-                            else if(delimiter == "#begin#")
+                            else */if(delimiter == "#all#")
                             {
                                 if(self->timeout_ > 0)
                                 {
@@ -988,7 +976,7 @@ namespace nextgen
 
                                 asio::async_read(self.get_socket(), stream.get_buffer(), asio::transfer_at_least(1), on_read);
                             }
-                            else if(delimiter == "#end#")
+                            /*else if(delimiter == "#end#")
                             {
                                 if(self->timeout_ > 0)
                                 {
@@ -998,14 +986,16 @@ namespace nextgen
                                     {
                                         if(error != asio::error::operation_aborted)
                                         {
-                                            asio::error_code ec(asio::error::eof);
-                                            self.cancel(ec);
+                                            if(DEBUG_MESSAGES)
+                                                std::cout << "[nextgen:network:ip:transport:tcp:socket:receive] Cancelling receive due to EOF." << std::endl;
+
+                                            self.cancel(asio::error_code(asio::error::eof));
                                         }
                                     });
                                 }
 
                                 asio::async_read(self.get_socket(), stream.get_buffer(), asio::transfer_at_least(1), on_read);
-                            }
+                            }*/
                             else
                             {
                                 if(self->timeout_ > 0)
@@ -1046,21 +1036,21 @@ namespace nextgen
                             });
                         }
 
-                        public: virtual socket_type& get_socket()
+                        public: virtual socket_type& get_socket() const
                         {
                             auto self = *this;
 
                             return self->socket_;
                         }
 
-                        public: virtual service_type get_service()
+                        public: virtual service_type get_service() const
                         {
                             auto self = *this;
 
                             return self->service_;
                         }
 
-                        public: virtual timer_type& get_timer()
+                        public: virtual timer_type& get_timer() const
                         {
                             auto self = *this;
 
