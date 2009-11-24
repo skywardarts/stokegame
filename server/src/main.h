@@ -590,7 +590,7 @@ namespace nextgen
                         public: typedef service service_type;
                         public: typedef uint32_t port_type;
 
-                        public: template<typename handler_type> void accept(port_type port, socket_type& socket_, handler_type handler_)
+                        public: void open(port_type port)
                         {
                             auto self = *this;
 
@@ -601,6 +601,18 @@ namespace nextgen
 
                             self->accepter_.bind(endpoint);
                             self->accepter_.listen();
+                        }
+
+                        public: bool is_open()
+                        {
+                            auto self = *this;
+
+                            return self->accepter_.is_open();
+                        }
+
+                        public: template<typename handler_type> void accept(socket_type& socket_, handler_type handler_)
+                        {
+                            auto self = *this;
 
                             self->accepter_.async_accept(socket_, handler_);
                         }
@@ -936,13 +948,6 @@ namespace nextgen
                                         successful_handler();
                                     }
                                 }
-                                /*else if(error == asio::error::eof)
-                                {
-                                    if(DEBUG_MESSAGES4)
-                                        std::cout << "<socket::receive handler> Read EOF (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
-
-                                    successful_handler();
-                                }*/
                                 else
                                 {
                                     if(DEBUG_MESSAGES4)
@@ -954,19 +959,7 @@ namespace nextgen
                                 }
                             };
 
-                            /*if(delimiter == "#all#")
-                            {
-                                self.receive("#begin#", stream,
-                                [=]()
-                                {
-                                    self.receive("#end#", stream, successful_handler, failure_handler);
-                                },
-                                [=]
-                                {
-                                    failure_handler();
-                                });
-                            }
-                            else */if(delimiter == "#all#")
+                            if(delimiter == "#all#")
                             {
                                 if(self->timeout_ > 0)
                                 {
@@ -976,26 +969,6 @@ namespace nextgen
 
                                 asio::async_read(self.get_socket(), stream.get_buffer(), asio::transfer_at_least(1), on_read);
                             }
-                            /*else if(delimiter == "#end#")
-                            {
-                                if(self->timeout_ > 0)
-                                {
-                                    self->timer_.expires_from_now(boost::posix_time::seconds(2));
-
-                                    self->timer_.async_wait([=](asio::error_code const& error)
-                                    {
-                                        if(error != asio::error::operation_aborted)
-                                        {
-                                            if(DEBUG_MESSAGES)
-                                                std::cout << "[nextgen:network:ip:transport:tcp:socket:receive] Cancelling receive due to EOF." << std::endl;
-
-                                            self.cancel(asio::error_code(asio::error::eof));
-                                        }
-                                    });
-                                }
-
-                                asio::async_read(self.get_socket(), stream.get_buffer(), asio::transfer_at_least(1), on_read);
-                            }*/
                             else
                             {
                                 if(self->timeout_ > 0)
@@ -1013,12 +986,18 @@ namespace nextgen
                             auto self2 = *this;
                             auto self = self2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
 
+                            if(DEBUG_MESSAGES)
+                                std::cout << "[nextgen:network:ip:transport:tcp:socket:accept] " << std::endl;
+
                             this_type client(self.get_service());
 
-                            self->accepter_.accept(port_, client.get_socket(), [=](asio::error_code const& error)
+                            if(!self->accepter_.is_open())
+                                self->accepter_.open(port_);
+
+                            self->accepter_.accept(client.get_socket(), [=](asio::error_code const& error)
                             {
                                 if(DEBUG_MESSAGES)
-                                    std::cout << "[nextgen:network:ip:transport:tcp:socket:accept] " << std::endl;
+                                    std::cout << "[nextgen:network:ip:transport:tcp:socket:accept] Trying to accept client..." << std::endl;
 
                                 if(!error)
                                 {
@@ -1032,7 +1011,7 @@ namespace nextgen
                                     failure_handler();
                                 }
 
-                                //self.accept(port_, successful_handler, failure_handler);
+                                self.accept(port_, successful_handler, failure_handler);
                             });
                         }
 
@@ -1642,76 +1621,6 @@ namespace nextgen
                     failure_handler();
             });
         }
-/*
-        template<typename layer_type>
-        class server
-        {
-            public: typedef service service_type;
-            public: typedef uint32_t port_type;
-
-            public: typedef std::function<void()> base_event_type;
-            public: typedef std::function<void(layer_type)> accept_successful_event_type;
-            public: typedef base_event_type accept_failure_event_type;
-
-            public: void accept(accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0) const
-            {
-                auto self = *this;
-
-                if(successful_handler == 0)
-                    successful_handler = self->accept_successful_event;
-
-                if(failure_handler == 0)
-                    failure_handler = self->accept_failure_event;
-
-                if(DEBUG_MESSAGES)
-                    std::cout << "[nextgen:network:server:accept] Accepting client..." << std::endl;
-
-                layer_type layer(self->service_);
-
-                layer.set_port(self->port_);
-
-                layer.accept(
-                [self, layer, successful_handler, failure_handler]()
-                {
-                    if(DEBUG_MESSAGES)
-                        std::cout << "[nextgen::network::server::accept] Successfully accepted client." << std::endl;
-
-                    successful_handler(layer);
-
-                    self.accept(successful_handler, failure_handler);
-                },
-                [self, successful_handler, failure_handler]()
-                {
-                    if(DEBUG_MESSAGES)
-                        std::cout << "[nextgen::network::server::accept] Failed to accept client." << std::endl;
-
-                    failure_handler();
-
-                    self.accept(successful_handler, failure_handler);
-                });
-            }
-
-            private: struct variables
-            {
-                variables(service_type service_, port_type port_) : service_(service_), port_(port_)
-                {
-
-                }
-
-                ~variables()
-                {
-
-                }
-
-                event<accept_successful_event_type> accept_successful_event;
-                event<accept_failure_event_type> accept_failure_event;
-
-                service_type service_;
-                port_type port_;
-            };
-
-            NEXTGEN_INITIALIZE_SHARED_DATA(server, variables);
-        };*/
     }
 }
 
