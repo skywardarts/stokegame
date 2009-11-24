@@ -91,7 +91,7 @@
     #include <Wincrypt.h>
 #endif
 
-#define NEXTGEN_INITIALIZE_SHARED_DATA(this_type, data_type, ...) \
+#define NEXTGEN_SHARED_DATA(this_type, data_type, ...) \
     private: boost::shared_ptr<data_type> ng_data; \
     public: this_type(this_type& t) : ng_data(t.ng_data) { } \
     public: this_type(this_type const& t) : ng_data(t.ng_data) { } \
@@ -410,7 +410,7 @@ namespace nextgen
             #endif
         };
 
-        NEXTGEN_INITIALIZE_SHARED_DATA(timer, variables);
+        NEXTGEN_SHARED_DATA(timer, variables);
     };
 
     namespace network
@@ -443,7 +443,7 @@ namespace nextgen
                 streambuf_type streambuf_;
             };
 
-            NEXTGEN_INITIALIZE_SHARED_DATA(stream, variables);
+            NEXTGEN_SHARED_DATA(stream, variables);
         };
 
         class service
@@ -480,7 +480,7 @@ namespace nextgen
                 service_type service;
             };
 
-            NEXTGEN_INITIALIZE_SHARED_DATA(service, variables);
+            NEXTGEN_SHARED_DATA(service, variables);
         };
 
         namespace ip
@@ -548,7 +548,7 @@ namespace nextgen
                             port_type port_;
                         };
 
-                        NEXTGEN_INITIALIZE_SHARED_DATA(layer, variables);
+                        NEXTGEN_SHARED_DATA(layer, variables);
                     };
                 }
 
@@ -632,7 +632,7 @@ namespace nextgen
                             accepter_type accepter_;
                         };
 
-                        NEXTGEN_INITIALIZE_SHARED_DATA(accepter, variables);
+                        NEXTGEN_SHARED_DATA(accepter, variables);
                     };
 
                     template<typename network_layer_type>
@@ -1068,7 +1068,7 @@ namespace nextgen
                             cancel_handler_type cancel_handler_;
                         };
 
-                        NEXTGEN_INITIALIZE_SHARED_DATA(layer, variables,
+                        NEXTGEN_SHARED_DATA(layer, variables,
                         {
                             auto self = *this;
 
@@ -1126,32 +1126,28 @@ namespace nextgen
 
                 class message_base
                 {
-
+                    public: typedef string raw_header_list_type;
+                    public: typedef hash_map<string, string> header_list_type;
+                    public: typedef uint32_t status_code_type;
+                    public: typedef string referer_type;
+                    public: typedef hash_map<string, string> post_list_type;
+                    public: typedef string content_type;
+                    public: typedef string path_type;
+                    public: typedef uint32_t id_type;
+                    public: typedef string version_type;
+                    public: typedef string network_layer_type;
+                    public: typedef string host_type;
+                    public: typedef uint32_t port_type;
+                    public: typedef stream stream_type;
+                    public: typedef string url_type;
+                    public: typedef string status_description_type;
+                    public: typedef string method_type;
                 };
 
                 namespace http
                 {
-
-
                     class message : public message_base
                     {
-                        public: typedef string raw_header_list_type;
-                        public: typedef hash_map<string, string> header_list_type;
-                        public: typedef uint32_t status_code_type;
-                        public: typedef string referer_type;
-                        public: typedef hash_map<string, string> post_list_type;
-                        public: typedef string content_type;
-                        public: typedef string path_type;
-                        public: typedef uint32_t id_type;
-                        public: typedef string version_type;
-                        public: typedef string network_layer_type;
-                        public: typedef string host_type;
-                        public: typedef uint32_t port_type;
-                        public: typedef stream stream_type;
-                        public: typedef string url_type;
-                        public: typedef string status_description_type;
-                        public: typedef string method_type;
-
                         public: stream_type& get_stream() const
                         {
                             auto self = *this;
@@ -1159,7 +1155,100 @@ namespace nextgen
                             return self->stream;
                         }
 
-                        public: void parse() const
+                        public: void parse_output() const
+                        {
+                            auto self = *this;
+
+                            if(self->status_code)
+                            {
+                               std::ostream data_stream(&self->stream.get_buffer());
+
+                                switch(self->status_code)
+                                {
+                                    case 200: self->status_description = "OK"; break;
+                                    default: self->status_description = "UNDEFINED"; break;
+                                }
+
+                                data_stream << "HTTP/" << self->version << ".x" << self->status_code << self->status_description << "\r\n";
+
+                                if(!self->header_list.empty())
+                                // header list already exists
+                                {
+                                    if(self->username.length() && self->password.length())
+                                    // add authentication into header list
+                                    {
+                                        if(self->header_list.find("Proxy-Authorization") != self->header_list.end())
+                                        // authentication header doesn't already exist
+                                        {
+                                            //self->header_list["Proxy-Authorization"] = "Basic " << base64encode(ps->username + ":" + ps->password);
+                                        }
+                                    }
+
+                                    // turn header list into raw header string
+                                    for(header_list_type::iterator i = self->header_list.begin(), l = self->header_list.end(); i != l; ++i)
+                                    {
+                                        self->raw_header_list += (*i).first + ": " + (*i).second + "\r\n";
+                                    }
+                                }
+
+                                self->raw_header_list += "Content-Length: " + to_string(self->content.length()) + "\r\n";
+
+                                if(DEBUG_MESSAGES4)
+                                    std::cout << self->raw_header_list << std::endl;
+
+                                if(DEBUG_MESSAGES4)
+                                    std::cout << self->content << std::endl;
+
+                                data_stream << self->raw_header_list + "\r\n";
+                                data_stream << self->content;
+                            }
+                            else if(self->method.length())
+                            {
+                                std::ostream data_stream(&self->stream.get_buffer());
+
+                                if(!self->post_list.empty())
+                                // parse post list
+                                {
+
+                                }
+
+                                data_stream << self->method + " " + self->url + " " + "HTTP" + "/" + self->version + "\r\n";
+
+                                if(self->header_list.empty() && self->raw_header_list.length())
+                                // turn raw header string into a header list
+                                {
+
+                                }
+
+                                if(!self->header_list.empty())
+                                // header list already exists
+                                {
+                                    if(self->username.length() && self->password.length())
+                                    // add authentication into header list
+                                    {
+                                        if(self->header_list.find("Proxy-Authorization") != self->header_list.end())
+                                        // authentication header doesn't already exist
+                                        {
+                                            //self->header_list["Proxy-Authorization"] = "Basic " << base64encode(ps->username + ":" + ps->password);
+                                        }
+                                    }
+
+                                    // turn header list into raw header string
+
+                                }
+
+                                if(DEBUG_MESSAGES4)
+                                    std::cout << self->raw_header_list << std::endl;
+
+                                if(DEBUG_MESSAGES4)
+                                    std::cout << self->content << std::endl;
+
+                                data_stream << self->raw_header_list + "\r\n";
+                                data_stream << self->content;
+                            }
+                        }
+
+                        public: void parse_input() const
                         {
                             auto self = *this;
 
@@ -1220,52 +1309,12 @@ namespace nextgen
                                     std::cout << "regex error: " << (e.code() == paren.code() ? "unbalanced parentheses" : "?") << std::endl;
                                 }
                             }
-                            else if(self->method.length())
-                            {
-                                std::ostream data_stream(&self->stream.get_buffer());
 
-                                if(!self->post_list.empty())
-                                // parse post list
-                                {
-
-                                }
-
-                                if(DEBUG_MESSAGES4)
-                                    std::cout << self->method + " " + self->url + " " + "HTTP" + "/" + self->version + "\r\n" << std::endl;
-
-                                data_stream << self->method + " " + self->url + " " + "HTTP" + "/" + self->version + "\r\n";
-
-                                if(self->header_list.empty() && self->raw_header_list.length())
-                                // turn raw header string into a header list
-                                {
-
-                                }
-
-                                if(!self->header_list.empty())
-                                // header list already exists
-                                {
-                                    if(self->username.length() && self->password.length())
-                                    // add authentication into header list
-                                    {
-                                        if(self->header_list.find("Proxy-Authorization") != self->header_list.end())
-                                        // authentication header doesn't already exist
-                                        {
-                                            //self->header_list["Proxy-Authorization"] = "Basic " << base64encode(ps->username + ":" + ps->password);
-                                        }
-                                    }
-
-                                    // turn header list into raw header string
-
-                                }
-
-                                data_stream << self->raw_header_list + "\r\n";
-                                data_stream << self->content;
-                            }
                         }
 
                         private: struct variables
                         {
-                            variables()
+                            variables() : status_code(0)
                             {
 
                             }
@@ -1296,7 +1345,7 @@ namespace nextgen
                             string scheme;
                         };
 
-                        NEXTGEN_INITIALIZE_SHARED_DATA(message, variables);
+                        NEXTGEN_SHARED_DATA(message, variables);
                     };
 
                     template<typename transport_layer_type>
@@ -1327,9 +1376,18 @@ namespace nextgen
                             });
                         }
 
+                        public: virtual void disconnect() const
+                        {
+                            auto self = *this;
+
+                            self->transport_layer_.close();
+                        }
+
                         public: virtual void send(message_type request_, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
+
+                            request_.parse_output();
 
                             self.send(request_.get_stream(), successful_handler, failure_handler);
                         }
@@ -1371,7 +1429,7 @@ namespace nextgen
                             self->transport_layer_.receive("#all#", response.get_stream(),
                             [=]()
                             {
-                                response.parse();
+                                response.parse_input();
 
                                 successful_handler(response);
                             },
@@ -1425,7 +1483,7 @@ namespace nextgen
                             transport_layer_type transport_layer_;
                         };
 
-                        NEXTGEN_INITIALIZE_SHARED_DATA(layer, variables);
+                        NEXTGEN_SHARED_DATA(layer, variables);
                     };
                 }
 
@@ -1433,7 +1491,48 @@ namespace nextgen
                 {
                     class message : public message_base
                     {
+                        public: stream_type& get_stream() const
+                        {
+                            auto self = *this;
 
+                            return self->stream;
+                        }
+
+                        public: void parse_output() const
+                        {
+                            auto self = *this;
+
+                        }
+
+                        public: void parse_input() const
+                        {
+                            auto self = *this;
+
+                            if(self->stream.get_buffer().in_avail())
+                            {
+                                std::istream data_stream(&self->stream.get_buffer());
+
+                            }
+
+                        }
+
+                        private: struct variables
+                        {
+                            variables()
+                            {
+
+                            }
+
+                            ~variables()
+                            {
+
+                            }
+
+                            content_type content;
+                            stream_type stream;
+                        };
+
+                        NEXTGEN_SHARED_DATA(message, variables);
                     };
 
                     template<typename transport_layer_type>
@@ -1446,16 +1545,85 @@ namespace nextgen
                         public: virtual void connect(host_type const& host_, port_type port_, connection_successful_event_type successful_handler = 0, connection_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
+
+                            if(successful_handler == 0)
+                                successful_handler = self->connection_successful_event;
+
+                            if(failure_handler == 0)
+                                failure_handler = self->connection_failure_event;
+
+                            self->transport_layer_.connect(host_, port_,
+                            [=]
+                            {
+                                successful_handler();
+                            },
+                            [=]
+                            {
+                                failure_handler();
+                            });
+                        }
+
+                        public: virtual void disconnect() const
+                        {
+                            auto self = *this;
+
+                            self->transport_layer_.close();
                         }
 
                         public: virtual void send(message_type request_, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
+
+                            request_.parse_output();
+
+                            self.send(request_.get_stream(), successful_handler, failure_handler);
+                        }
+
+                        public: virtual void send(stream_type stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+
+                            if(successful_handler == 0)
+                                successful_handler = self->send_successful_event;
+
+                            if(failure_handler == 0)
+                                failure_handler = self->send_failure_event;
+
+                            self->transport_layer_.send(stream,
+                            [=]()
+                            {
+                                successful_handler();
+                            },
+                            [=]()
+                            {
+                                failure_handler();
+                            });
                         }
 
                         public: virtual void receive(receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
+
+                            if(successful_handler == 0)
+                                successful_handler = self->receive_successful_event;
+
+                            if(failure_handler == 0)
+                                failure_handler = self->receive_failure_event;
+
+                            message_type response2;
+                            auto response = response2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
+
+                            self->transport_layer_.receive("#all#", response.get_stream(),
+                            [=]()
+                            {
+                                response.parse_input();
+
+                                successful_handler(response);
+                            },
+                            [=]()
+                            {
+                                failure_handler();
+                            });
                         }
 
                         public: virtual void accept(port_type port_, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0)
@@ -1475,7 +1643,7 @@ namespace nextgen
 
                         private: struct variables
                         {
-                            variables(service_type& service_) : transport_layer_(service_)
+                            variables(service_type service_) : transport_layer_(service_)
                             {
 
                             }
@@ -1502,7 +1670,7 @@ namespace nextgen
                             transport_layer_type transport_layer_;
                         };
 
-                        NEXTGEN_INITIALIZE_SHARED_DATA(layer, variables);
+                        NEXTGEN_SHARED_DATA(layer, variables);
                     };
                 }
 
@@ -1510,7 +1678,48 @@ namespace nextgen
                 {
                     class message : public message_base
                     {
+                        public: stream_type& get_stream() const
+                        {
+                            auto self = *this;
 
+                            return self->stream;
+                        }
+
+                        public: void parse_output() const
+                        {
+                            auto self = *this;
+
+                        }
+
+                        public: void parse_input() const
+                        {
+                            auto self = *this;
+
+                            if(self->stream.get_buffer().in_avail())
+                            {
+                                std::istream data_stream(&self->stream.get_buffer());
+
+                            }
+
+                        }
+
+                        private: struct variables
+                        {
+                            variables()
+                            {
+
+                            }
+
+                            ~variables()
+                            {
+
+                            }
+
+                            content_type content;
+                            stream_type stream;
+                        };
+
+                        NEXTGEN_SHARED_DATA(message, variables);
                     };
 
                     template<typename transport_layer_type>
@@ -1579,7 +1788,7 @@ namespace nextgen
                             transport_layer_type transport_layer_;
                         };
 
-                        NEXTGEN_INITIALIZE_SHARED_DATA(layer, variables);
+                        NEXTGEN_SHARED_DATA(layer, variables);
                     };
                 }
             }
@@ -1624,6 +1833,300 @@ namespace nextgen
     }
 }
 
+
+namespace nextgen
+{
+    namespace math
+    {
+        template<typename element_type>
+        class vector;
+
+        template<typename element_type> vector<element_type> operator+(vector<element_type> const&, vector<element_type> const&);
+        template<typename element_type> vector<element_type> operator-(vector<element_type> const&, vector<element_type> const&);
+        template<typename element_type> vector<element_type> operator*(vector<element_type> const&, float);
+        template<typename element_type> vector<element_type> operator*(float, vector<element_type> const&);
+        template<typename element_type> vector<element_type> operator/(vector<element_type> const&, float);
+        template<typename element_type> vector<element_type> operator/(float, vector<element_type> const&);
+        template<typename element_type> vector<element_type> operator-(vector<element_type> const&);
+        template<typename element_type> vector<element_type> operator+(vector<element_type> const&);
+
+
+        template <typename element_type>
+        class vector : std::vector<element_type>
+        {
+            public: explicit vector();
+            public: explicit vector(const element_type);
+            public: explicit vector(const element_type, const element_type);
+            public: explicit vector(const element_type, const element_type, const element_type);
+            public: explicit vector(const element_type, const element_type, const element_type, const element_type);
+
+            public: void initialize(const element_type, const element_type, const element_type, const element_type);
+
+            public: const element_type x() const;
+            public: const element_type y() const;
+            public: const element_type z() const;
+            public: const element_type w() const;
+
+            public: void x(const element_type);
+            public: void y(const element_type);
+            public: void z(const element_type);
+            public: void w(const element_type);
+
+            //public: virtual const string to_string() const;
+
+            public: static vector<element_type> null();
+
+            public: static vector<element_type> forward();
+            public: static vector<element_type> backward();
+
+            public: static vector<element_type> up();
+            public: static vector<element_type> down();
+
+            public: static vector<element_type> left();
+            public: static vector<element_type> right();
+
+            public: static vector<element_type> unit_x();
+            public: static vector<element_type> unit_y();
+            public: static vector<element_type> unit_z();
+
+            public: static vector<element_type> zero();
+            public: static vector<element_type> one();
+
+            //private: friend std::ostream& operator<<(std::ostream&, const vector<element_type>&);
+            private: template<typename y> friend vector<y> operator+(vector<y> const&, vector<y> const&);
+            private: template<typename y> friend vector<y> operator-(vector<y> const&, vector<element_type> const&);
+            private: template<typename y> friend vector<y> operator*(vector<y> const&, float);
+            private: template<typename y> friend vector<y> operator*(float, vector<y> const&);
+            private: template<typename y> friend vector<y> operator/(vector<y> const&, float);
+            private: template<typename y> friend vector<y> operator/(float, vector<y> const&);
+            private: template<typename y> friend vector<y> operator-(vector<y> const&);
+            private: template<typename y> friend vector<y> operator+(vector<y> const&);
+        };
+
+        template <typename element_type>
+        class vector2 : public vector<element_type>
+        {
+            public: explicit vector2() : vector<element_type>() { }
+
+            //public: operator vector3();
+            //public: operator vector3() const;
+            //public: operator vector4();
+            //public: operator vector4() const;
+        };
+
+        template <typename element_type>
+        inline vector<element_type> vector<element_type>::null()
+        {
+            return new vector<element_type>();
+        }
+
+        template <typename element_type>
+        inline vector<element_type>::vector() : std::vector<element_type>(4)
+        {
+            this->initialize(0, 0, 0, 0);
+        }
+
+        template <typename element_type>
+        inline vector<element_type>::vector(const element_type x) : std::vector<element_type>(1)
+        {
+            this->initialize(x, 0, 0, 0);
+        }
+
+        template <typename element_type>
+        inline vector<element_type>::vector(const element_type x, const element_type y) : std::vector<element_type>(2)
+        {
+            this->initialize(x, y, 0, 0);
+        }
+
+        template <typename element_type>
+        inline vector<element_type>::vector(const element_type x, const element_type y, const element_type z) : std::vector<element_type>(3)
+        {
+            this->initialize(x, y, z, 0);
+        }
+
+        template <typename element_type>
+        inline vector<element_type>::vector(const element_type x, const element_type y, const element_type z, const element_type w) : std::vector<element_type>(4)
+        {
+            this->initialize(x, y, z, w);
+        }
+
+        template <typename element_type>
+        inline void vector<element_type>::initialize(const element_type x = 0, const element_type y = 0, const element_type z = 0, const element_type w = 0)
+        {
+            this->x(x);
+            this->y(y);
+            this->z(z);
+            this->w(w);
+        }
+
+        template <typename element_type>
+        inline const element_type vector<element_type>::x() const
+        {
+            return this->at(0);
+        }
+
+        template <typename element_type>
+        inline const element_type vector<element_type>::y() const
+        {
+            return this->at(1);
+        }
+
+        template <typename element_type>
+        inline const element_type vector<element_type>::z() const
+        {
+            return this->at(2);
+        }
+
+        template <typename element_type>
+        inline const element_type vector<element_type>::w() const
+        {
+            return this->at(3);
+        }
+
+        template <typename element_type>
+        inline void vector<element_type>::x(const element_type x)
+        {
+            (*this)[0] = x;
+        }
+
+        template <typename element_type>
+        inline void vector<element_type>::y(const element_type y)
+        {
+            (*this)[1] = y;
+        }
+
+        template <typename element_type>
+        inline void vector<element_type>::z(const element_type z)
+        {
+            (*this)[2] = z;
+        }
+
+        template <typename element_type>
+        inline void vector<element_type>::w(const element_type w)
+        {
+            (*this)[3] = w;
+        }
+        /*
+        template <typename element_type>
+        inline std::ostream& operator<<(std::ostream& os, const vector<element_type>& v)
+        {
+            os << v.to_string();
+
+            return os;
+        }*/
+
+        template <typename element_type>
+        inline vector<element_type> operator+(vector<element_type> const& v1, vector<element_type> const& v2)
+        {
+            return v1.clone().add(v2);
+        }
+
+        template <typename element_type>
+        inline vector<element_type> operator-(vector<element_type> const& v1, vector<element_type> const& v2)
+        {
+            return v1.clone().subtract(v2);
+        }
+
+        template <typename element_type>
+        inline vector<element_type> operator*(vector<element_type> const& v, float m)
+        {
+            return v.clone().multiply(m);
+        }
+
+        template <typename element_type>
+        inline vector<element_type> operator*(float m, vector<element_type> const& v)
+        {
+            return v.clone().multiply(m);
+        }
+
+        template <typename element_type>
+        inline vector<element_type> operator/(vector<element_type> const& v, float m)
+        {
+            return v.clone().divide(m);
+        }
+
+        template <typename element_type>
+        inline vector<element_type> operator/(float m, vector<element_type> const& v)
+        {
+            return v.clone().divide(m);
+        }
+
+        template <typename element_type>
+        inline vector<element_type> operator-(vector<element_type> const& v)
+        {
+            v->x(--v->x());
+            v->y(--v->y());
+            v->z(--v->z());
+            v->w(--v->w());
+
+            return v;
+        }
+
+        template <typename element_type>
+        inline vector<element_type> operator+(vector<element_type> const& v)
+        {
+            v->x(++v->x());
+            v->y(++v->y());
+            v->z(++v->z());
+            v->w(++v->w());
+
+            return v;
+        }
+
+
+    }
+}
+
+
+namespace nextgen
+{
+    namespace engine
+    {
+        class world_object
+        {
+
+        };
+
+        class world_npc : public world_object
+        {
+            public: typedef uint32_t id_type;
+            public: typedef string name_type;
+            public: typedef int vector_type;
+            public: typedef math::vector2<vector_type> position_type;
+            public: typedef math::vector2<vector_type> direction_type;
+        };
+
+        class world_monster : public world_npc
+        {
+
+        };
+
+        class world_player : public world_npc
+        {
+            private: struct variables
+            {
+                variables() : id(0), name("Undefined")
+                {
+
+                }
+
+                ~variables()
+                {
+
+                }
+
+                id_type id;
+                name_type name;
+                position_type position;
+                direction_type direction;
+            };
+
+            NEXTGEN_SHARED_DATA(world_player, variables);
+        };
+    }
+}
+
+
 namespace stoke
 {
 	class game : public nextgen::singleton<game>
@@ -1651,6 +2154,6 @@ namespace stoke
             nextgen::network::service service;
         };
 
-        NEXTGEN_INITIALIZE_SHARED_DATA(game, variables);
+        NEXTGEN_SHARED_DATA(game, variables);
 	};
 }
