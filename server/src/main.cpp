@@ -6,28 +6,36 @@ void stoke::game::run()
     auto self = *this;
 
     // http server
-    nextgen::network::server<nextgen::network::tcp_socket> s1(self->service, 80);
+    //nextgen::network::http_client http_server(self->service);
+    //nextgen::network::xml_client xml_server(self->service);
+    //nextgen::network::ngp_client ngp_server(self->service);
+
+
+
+
+    //nextgen::network::server<nextgen::network::tcp_socket> s1(self->service, 80);
 
     // policy server
-    nextgen::network::server<nextgen::network::tcp_socket> s2(self->service, 843);
+    //nextgen::network::server<nextgen::network::tcp_socket> s2(self->service, 843);
 
     // realm server
-    nextgen::network::server<nextgen::network::tcp_socket> s3(self->service, 6110);
+    //nextgen::network::server<nextgen::network::tcp_socket> s3(self->service, 6110);
 
     // game server
-    nextgen::network::server<nextgen::network::tcp_socket> s4(self->service, 6111);
+    //nextgen::network::server<nextgen::network::tcp_socket> s4(self->service, 6111);
 
     // chat server
-    nextgen::network::server<nextgen::network::tcp_socket> s5(self->service, 6112);
+    //nextgen::network::server<nextgen::network::tcp_socket> s5(self->service, 6112);
 
 
-    s1.accept(
-    [self](nextgen::network::tcp_socket socket)
+    nextgen::network::create_server<nextgen::network::http_client>(self->service, 80,
+    [self](nextgen::network::http_client client)
     {
-        nextgen::network::http_client client(socket);
+        auto self2 = self; // bugfix(daemn) nested lambdas have no stack
+        auto client2 = client; // bugfix(daemn) nested lambdas have no stack
 
         client.receive(
-        [self, client](nextgen::network::http_message response)
+        [&self2, &client2](nextgen::network::http_message response) // bugfix(daemn) lambda wont PBV, so temp PVR
         {
 
 
@@ -38,13 +46,14 @@ void stoke::game::run()
         });
     });
 
-    s2.accept(
-    [self](nextgen::network::tcp_socket socket)
+    nextgen::network::create_server<nextgen::network::xml_client>(self->service, 843,
+    [self](nextgen::network::xml_client client)
     {
-        nextgen::network::xml_client client(socket);
+        auto self2 = self; // bugfix(daemn) nested lambdas have no stack
+        auto client2 = client; // bugfix(daemn) nested lambdas have no stack
 
         client.receive(
-        [self, client](nextgen::network::xml_message response)
+        [&self2, &client2](nextgen::network::xml_message response) // bugfix(daemn) lambda wont PBV, so temp PVR
         {
 
 
@@ -55,13 +64,14 @@ void stoke::game::run()
         });
     });
 
-    s3.accept(
-    [self](nextgen::network::tcp_socket socket)
+    nextgen::network::create_server<nextgen::network::ngp_client>(self->service, 6110,
+    [self](nextgen::network::ngp_client client)
     {
-        nextgen::network::ngp_client client(socket);
+        auto self2 = self; // bugfix(daemn) nested lambdas have no stack
+        auto client2 = client; // bugfix(daemn) nested lambdas have no stack
 
         client.receive(
-        [self, client](nextgen::network::ngp_message response)
+        [&self2, &client2](nextgen::network::ngp_message response) // bugfix(daemn) lambda wont PBV, so temp PVR
         {
 
 
@@ -72,13 +82,14 @@ void stoke::game::run()
         });
     });
 
-    s4.accept(
-    [self](nextgen::network::tcp_socket socket)
+    nextgen::network::create_server<nextgen::network::ngp_client>(self->service, 6111,
+    [self](nextgen::network::ngp_client client)
     {
-        nextgen::network::ngp_client client(socket);
+        auto self2 = self; // bugfix(daemn) nested lambdas have no stack
+        auto client2 = client; // bugfix(daemn) nested lambdas have no stack
 
         client.receive(
-        [self, client](nextgen::network::ngp_message response)
+        [&self2, &client2](nextgen::network::ngp_message response) // bugfix(daemn) lambda wont PBV, so temp PVR
         {
 
 
@@ -89,13 +100,14 @@ void stoke::game::run()
         });
     });
 
-    s5.accept(
-    [self](nextgen::network::tcp_socket socket)
+    nextgen::network::create_server<nextgen::network::ngp_client>(self->service, 6112,
+    [self](nextgen::network::ngp_client client)
     {
-        nextgen::network::ngp_client client(socket);
+        auto self2 = self; // bugfix(daemn) nested lambdas have no stack
+        auto client2 = client; // bugfix(daemn) nested lambdas have no stack
 
         client.receive(
-        [self, client](nextgen::network::ngp_message response)
+        [&self2, &client2](nextgen::network::ngp_message response) // bugfix(daemn) lambda wont PBV, so temp PVR
         {
 
 
@@ -116,7 +128,11 @@ void stoke::game::run()
             if(timer.stop() > 1.0f)
             {
                 timer.start();
+
+                std::cout << "[stoke:game:run] Updating services..." << std::endl;
             }
+
+
 
             self->service.update();
 

@@ -46,7 +46,7 @@
 			<Add library="libcurl.a" />
 		</Linker>
 		<Unit filename="../../src/main.cpp" />
-		<Unit filename="../../src/main.hpp" />
+		<Unit filename="../../src/main.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />

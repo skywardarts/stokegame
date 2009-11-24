@@ -101,10 +101,32 @@
     public: bool operator!=(int t) const { return !this->operator==(t); } \
     public: boost::shared_ptr<data_type> const& operator->() const { return this->ng_data; } \
 
+
 bool DEBUG_MESSAGES = 0;
 bool DEBUG_MESSAGES2 = 0;
 bool DEBUG_MESSAGES3 = 0;
 bool DEBUG_MESSAGES4 = 1;
+
+void find_and_replace(std::string& source, std::string const& find, std::string const& replace)
+{
+	for(std::string::size_type i = 0; (i = source.find(find, i)) != std::string::npos;)
+	{
+		source.replace(i, find.length(), replace);
+
+		i += replace.length() - find.length() + 1;
+	}
+}
+
+template<typename element_type>
+std::string to_string(element_type element)
+{
+	return boost::lexical_cast<std::string>(element);
+}
+
+int to_int(std::string const& element)
+{
+	return boost::lexical_cast<int>(element);
+}
 
 namespace nextgen
 {
@@ -125,6 +147,30 @@ namespace nextgen
     typedef boost::uint16_t uint16_t;
     typedef boost::uint32_t uint32_t;
     typedef boost::uint64_t uint64_t;
+
+    template<typename A, typename B>
+    class hash_map : public boost::unordered_map<A, B> {};
+
+    template<typename A>
+    class deque : public std::deque<A> {};
+
+    template<typename A>
+    class list : public std::list<A> {};
+
+    template<typename A>
+    class array : public std::vector<A> {};
+
+    template<typename A, typename B>
+    class tuple : public boost::tuple<A, B> {};
+
+    template<typename T>
+    class reference : public boost::reference_wrapper<T> {};
+
+    template<typename T, typename A>
+    inline T any_cast(A a)
+    {
+        return boost::any_cast<T>(a);
+    }
 
     #if NEXTGEN_PLATFORM == NEXTGEN_PLATFORM_WINDOWS
         const int null = NULL;
@@ -571,6 +617,7 @@ namespace nextgen
                     template<typename network_layer_type>
                     class layer : public layer_base
                     {
+                        public: typedef layer<network_layer_type> this_type;
                         public: typedef service service_type;
                         public: typedef stream stream_type;
                         public: typedef string host_type;
@@ -586,39 +633,41 @@ namespace nextgen
                         public: typedef std::function<void()> base_event_type;
                         public: typedef base_event_type connection_successful_event_type;
                         public: typedef base_event_type connection_failure_event_type;
-                        public: typedef std::function<void()> receive_successful_event_type;
+                        public: typedef base_event_type receive_successful_event_type;
                         public: typedef base_event_type receive_failure_event_type;
                         public: typedef base_event_type send_successful_event_type;
                         public: typedef base_event_type send_failure_event_type;
                         public: typedef base_event_type quit_successful_event_type;
                         public: typedef base_event_type quit_failure_event_type;
+                        public: typedef std::function<void(this_type)> accept_successful_event_type;
+                        public: typedef base_event_type accept_failure_event_type;
 
                         public: virtual host_type const& get_host()
                         {
                             auto self = *this;
 
-                            return self->address_.get_host();
+                            return self->network_layer_.get_host();
                         }
 
                         public: virtual void set_host(host_type const& host_)
                         {
                             auto self = *this;
 
-                            self->address_.set_host(host_);
+                            self->network_layer_.set_host(host_);
                         }
 
                         public: virtual port_type get_port()
                         {
                             auto self = *this;
 
-                            return self->address_.get_port();
+                            return self->network_layer_.get_port();
                         }
 
                         public: virtual void set_port(port_type port)
                         {
                             auto self = *this;
 
-                            self->address_.set_port(port);
+                            self->network_layer_.set_port(port);
                         }
 
                         public: bool is_connected() const
@@ -633,7 +682,7 @@ namespace nextgen
                             auto self = *this;
 
                             if(DEBUG_MESSAGES)
-                                std::cout << "<socket::cancel> Cancelling socket (" << self->address_.get_host() << ":" << self->address_.get_port() << ")" << std::endl;
+                                std::cout << "<socket::cancel> Cancelling socket (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                             if(self->socket_.native() != asio::detail::invalid_socket)
                                 self->socket_.cancel();
@@ -646,7 +695,7 @@ namespace nextgen
                             auto self = *this;
 
                             if(DEBUG_MESSAGES)
-                                std::cout << "<socket::cancel> Cancelling socket (" << self->address_.get_host() << ":" << self->address_.get_port() << ")" << std::endl;
+                                std::cout << "<socket::cancel> Cancelling socket (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                             if(self->socket_.native() != asio::detail::invalid_socket)
                                 self->socket_.cancel(error);
@@ -659,7 +708,7 @@ namespace nextgen
                             auto self = *this;
 
                             if(DEBUG_MESSAGES)
-                                std::cout << "<socket::close> Closing socket normally. (" << self->address_.get_host() << ":" << self->address_.get_port() << ")" << std::endl;
+                                std::cout << "<socket::close> Closing socket normally. (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                             if(self->socket_.native() != asio::detail::invalid_socket)
                                 self->socket_.close();
@@ -685,27 +734,28 @@ namespace nextgen
                             if(failure_handler == 0)
                                 failure_handler = self->connection_failure_event;
 
-                            self->address_.set_host(host_);
-                            self->address_.set_port(port_);
+                            self->network_layer_.set_host(host_);
+                            self->network_layer_.set_port(port_);
 
                             if(DEBUG_MESSAGES)
-                                std::cout << "<socket::connect> (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                                std::cout << "<socket::connect> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                             resolver_type::query query_(host_, port_);
 
                             if(self->timeout_ > 0)
                             {
                                 if(DEBUG_MESSAGES)
-                                    std::cout << "<socket::connect> create timer (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                                    std::cout << "<socket::connect> create timer (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
-                                self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout));
-                                self->timer_.async_wait(self->cancel_handler);
+                                self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
+                                self->timer_.async_wait(self->cancel_handler_);
                             }
 
+/* todo(daemn)
                             self->resolver_.async_resolve(query_, [self, successful_handler, failure_handler](asio::error_code const& error, resolver_type::iterator endpoint_iterator)
                             {
                                 if(DEBUG_MESSAGES)
-                                    std::cout << "<socket::connect handler> (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                                    std::cout << "<socket::connect handler> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                                 if(!error)
                                 {
@@ -714,7 +764,7 @@ namespace nextgen
                                     ++endpoint_iterator;
 
                                     if(DEBUG_MESSAGES)
-                                        std::cout << "<socket::connect handler> create timer (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                                        std::cout << "<socket::connect handler> create timer (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                                     if(DEBUG_MESSAGES2)
                                         std::cout << "<socket::connect handler> Trying to connect to proxy: " << endpoint.address().to_string() << ":" << endpoint.port() << std::endl;
@@ -725,47 +775,7 @@ namespace nextgen
                                         self->timer_.async_wait(self->cancel_handler);
                                     }
 
-                                    self->socket.async_connect(endpoint, [self, successful_handler, failure_handler](asio::error_code const& error)//, asio::ip::tcp::resolver::iterator endpoint_iterator)
-                                    {
-                                        if(DEBUG_MESSAGES)
-                                            std::cout << "<socket::connect handler> (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
-
-                                        if(self->timeout_ > 0)
-                                            self.cancel_timer();
-
-                                        if(!error)
-                                        {
-                                            if(self.is_connected())
-                                                successful_handler();
-                                            else
-                                                failure_handler();
-                                        }
-                                        else if(error == asio::error::operation_aborted)
-                                        {
-                                            if(DEBUG_MESSAGES3)
-                                                std::cout << "<socket::connect handler> Connect operation aborted." << std::endl;
-
-                                            self.close();
-
-                                            failure_handler();
-                                        }
-                                        else
-                                        {
-                                            if(error == asio::error::fd_set_failure)
-                                            {
-                                                std::cout << "<socket::connect handler> System Error: " << error.message() << std::endl;
-                                            }
-                                            else
-                                            {
-                                                if(DEBUG_MESSAGES4)
-                                                    std::cout << "<socket::connect handler> Error: " << error.message() << std::endl;
-                                            }
-
-                                            self.close();
-
-                                            failure_handler();
-                                        }
-                                    });
+                                    //todo(daemn) add additional endpoint connection tries
                                 }
                                 else if(error == asio::error::operation_aborted)
                                 {
@@ -795,7 +805,7 @@ namespace nextgen
 
                                     failure_handler();
                                 }
-                            });
+                            });*/
                         }
 
                         public: virtual void cancel_timer() const
@@ -816,15 +826,16 @@ namespace nextgen
                                 failure_handler = self->send_failure_event;
 
                             if(DEBUG_MESSAGES)
-                                std::cout << "<socket::write> create timer (" << self->address_.get_host() << ":" << self->address_.get_port() << ")" << std::endl;
+                                std::cout << "<socket::write> create timer (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
-                            if(self->timeout > 0)
+                            if(self->timeout_ > 0)
                             {
-                                self->timer.expires_from_now(boost::posix_time::seconds(self->timeout_));
-                                self->timer.async_wait(self->cancel_handler_);
+                                self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
+                                self->timer_.async_wait(self->cancel_handler_);
                             }
 
-                            asio::async_write(self->socket_, stream.get_buffer(), [self, stream, successful_handler, failure_handler](asio::error_code const& error, size_t& total)//boost::bind(&ClientSocket::OnWrite, shared_from_this(), asio::placeholders::error, cb));
+                            asio::async_write(self->socket_, stream.get_buffer(),
+                            [&self, &stream, successful_handler, failure_handler](asio::error_code const& error, size_t& total)//boost::bind(&ClientSocket::OnWrite, shared_from_this(), asio::placeholders::error, cb));
                             {
                                 if(self->timeout_ > 0)
                                     self.cancel_timer();
@@ -837,7 +848,7 @@ namespace nextgen
                                 }
 
                                 if(DEBUG_MESSAGES)
-                                    std::cout << "<socket::write handler> (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                                    std::cout << "<socket::write handler> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                                 if(!error)
                                 {
@@ -882,7 +893,7 @@ namespace nextgen
 
                         public: virtual void receive(std::string const& delimiter, stream_type stream, receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
                         {
-                            auto self = *this;
+                            auto self = this_type(*this);
 
                             if(successful_handler == 0)
                                 successful_handler = self->receive_successful_event;
@@ -891,17 +902,17 @@ namespace nextgen
                                 failure_handler = self->receive_failure_event;
 
                             if(DEBUG_MESSAGES)
-                                std::cout << "<socket::receive> (" << self->address_.get_host() << ":" << self->address_.get_port() << ")" << std::endl;
+                                std::cout << "<socket::receive> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                             if(DEBUG_MESSAGES)
-                                std::cout << "<socket::receive> create timer (" << self->address_.get_host() << ":" << self->address_.get_port() << ")" << std::endl;
+                                std::cout << "<socket::receive> create timer (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
-                            std::function<void(asio::error_code const, uint32_t)> on_read = [self, stream, successful_handler, failure_handler](asio::error_code const& error, uint32_t& total)
+                            std::function<void(asio::error_code const, uint32_t)> on_read = [&self, &stream, &successful_handler, &failure_handler](asio::error_code const& error, uint32_t& total)
                             {
                                 if(DEBUG_MESSAGES)
-                                    std::cout << "<socket::receive handler> (" << self->address_.get_host() << ":" << self->address_.get_port() << ")" << std::endl;
+                                    std::cout << "<socket::receive handler> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
-                                if(self->timeout > 0)
+                                if(self->timeout_ > 0)
                                     self.cancel_timer();
 
                                 if(!self.is_connected())
@@ -918,7 +929,7 @@ namespace nextgen
                                 else if(error == asio::error::eof)
                                 {
                                     if(DEBUG_MESSAGES4)
-                                        std::cout << "<socket::receive handler> Read EOF (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                                        std::cout << "<socket::receive handler> Read EOF (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                                     successful_handler();
                                 }
@@ -945,11 +956,11 @@ namespace nextgen
                             if(delimiter == "#all#")
                             {
                                 self.receive("#begin#", stream,
-                                [self, stream, successful_handler, failure_handler]()
+                                [&self, &stream, &successful_handler, failure_handler]()
                                 {
                                     self.receive("#end#", stream, successful_handler, failure_handler);
                                 },
-                                [failure_handler]
+                                [&failure_handler]
                                 {
                                     failure_handler();
                                 });
@@ -958,8 +969,8 @@ namespace nextgen
                             {
                                 if(self->timeout_ > 0)
                                 {
-                                    self->timer.expires_from_now(boost::posix_time::seconds(self->timeout));
-                                    self->timer.async_wait(self->cancel_handler_);
+                                    self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
+                                    self->timer_.async_wait(self->cancel_handler_);
                                 }
 
                                 asio::async_read(self.get_socket(), stream.get_buffer(), asio::transfer_at_least(1), on_read);
@@ -968,9 +979,9 @@ namespace nextgen
                             {
                                 if(self->timeout_ > 0)
                                 {
-                                    self->timer.expires_from_now(boost::posix_time::seconds(2));
+                                    self->timer_.expires_from_now(boost::posix_time::seconds(2));
 
-                                    self->timer.async_wait([self, successful_handler](asio::error_code const& error)
+                                    self->timer_.async_wait([&self, successful_handler](asio::error_code const& error)
                                     {
                                         if(error != asio::error::operation_aborted)
                                         {
@@ -986,12 +997,38 @@ namespace nextgen
                             {
                                 if(self->timeout_ > 0)
                                 {
-                                    self->timer.expires_from_now(boost::posix_time::seconds(self->timeout_));
-                                    self->timer.async_wait(self->cancel_handler_);
+                                    self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
+                                    self->timer_.async_wait(self->cancel_handler_);
                                 }
 
                                 asio::async_read_until(self.get_socket(), stream.get_buffer(), delimiter, on_read);
                             }
+                        }
+
+                        public: virtual void accept(port_type port_, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0)
+                        {
+                            auto self = *this;
+
+                            this_type layer(self.get_service());
+
+                            accepter accepter_(self.get_service(), port_);
+
+                            accepter_.accept(layer.get_socket(), [&self, &layer, &successful_handler, &failure_handler](asio::error_code const& error)
+                            {
+                                if(DEBUG_MESSAGES)
+                                    std::cout << "server::accept handler" << std::endl;
+
+                                if(!error)
+                                {
+                                    successful_handler(layer);
+                                }
+                                else
+                                {
+                                    failure_handler();
+                                }
+
+                                //self.accept(successful_handler, failure_handler);
+                            });
                         }
 
                         public: virtual socket_type& get_socket()
@@ -999,6 +1036,13 @@ namespace nextgen
                             auto self = *this;
 
                             return self->socket_;
+                        }
+
+                        public: virtual service_type get_service()
+                        {
+                            auto self = *this;
+
+                            return self->service_;
                         }
 
                         public: virtual timer_type& get_timer()
@@ -1010,7 +1054,7 @@ namespace nextgen
 
                         private: struct variables
                         {
-                            variables(service_type& service_) : socket_(service_.get_service()), resolver_(service_.get_service()), timer_(service_.get_service()), network_layer_(new network_layer_type), timeout_(180)
+                            variables(service_type service_) : service_(service_), socket_(service_.get_service()), resolver_(service_.get_service()), timer_(service_.get_service()), network_layer_(network_layer_type()), timeout_(180)
                             {
 
                             }
@@ -1020,13 +1064,17 @@ namespace nextgen
 
                             }
 
-                            event<receive_successful_event_type> receive_successful_event;
+
                             event<send_successful_event_type> send_successful_event;
+                            event<send_failure_event_type> send_failure_event;
                             event<connection_successful_event_type> connection_successful_event;
                             event<connection_failure_event_type> connection_failure_event;
-                            event<send_failure_event_type> send_failure_event;
+                            event<receive_successful_event_type> receive_successful_event;
                             event<receive_failure_event_type> receive_failure_event;
+                            event<accept_failure_event_type> accept_failure_event;
+                            event<accept_successful_event_type> accept_successful_event;
 
+                            service_type service_;
                             socket_type socket_;
                             resolver_type resolver_;
                             timer_type timer_;
@@ -1039,27 +1087,23 @@ namespace nextgen
                         {
                             auto self = *this;
 
-                            if(DEBUG_MESSAGES)
-                                std::cout << "<socket::start> (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                            //if(DEBUG_MESSAGES)
+                                //std::cout << "[nextgen::network::ip::transport::tcp::socket] (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                             self->cancel_handler_ = [self](asio::error_code const& error)
                             {
                                 if(error == asio::error::operation_aborted)
                                 {
-                                    if(DEBUG_MESSAGES)
-                                        std::cout << "<socket::cancel_handler> Timer cancelled (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                                    //if(DEBUG_MESSAGES)
+                                    //    std::cout << "<socket::cancel_handler> Timer cancelled (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
                                 }
                                 else
                                 {
-                                    if(DEBUG_MESSAGES)
-                                        std::cout << "<socket::cancel_handler> Timer called back. Closing socket (" << self->address.get_host() << ":" << self->address.get_port() << ")" << std::endl;
+                                    //if(DEBUG_MESSAGES)
+                                    //    std::cout << "<socket::cancel_handler> Timer called back. Closing socket (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                                     // bugfix(daemn): read timer doesn't actually cancel
-                                    #if NEXTGEN_PLATFORM == NEXTGEN_PLATFORM_WINDOWS
-                                        self.cancel();
-                                    #else
-                                        self.cancel();
-                                    #endif
+                                    self.cancel();
                                 }
                             };
                         });
@@ -1074,9 +1118,25 @@ namespace nextgen
         {
             namespace application
             {
+                template<typename message>
                 class layer_base
                 {
+                    public: typedef service service_type;
+                    public: typedef message message_type;
+                    public: typedef timer timer_type;
+                    public: typedef string host_type;
+                    public: typedef uint32_t port_type;
+                    public: typedef stream stream_type;
 
+                    public: typedef std::function<void()> base_event_type;
+                    public: typedef base_event_type send_successful_event_type;
+                    public: typedef base_event_type send_failure_event_type;
+                    public: typedef std::function<void(message_type)> receive_successful_event_type;
+                    public: typedef base_event_type receive_failure_event_type;
+                    public: typedef std::function<void(message_type)> request_successful_event_type;
+                    public: typedef base_event_type request_failure_event_type;
+                    public: typedef base_event_type connection_successful_event_type;
+                    public: typedef base_event_type connection_failure_event_type;
                 };
 
                 class message_base
@@ -1086,15 +1146,300 @@ namespace nextgen
 
                 namespace http
                 {
+
+
                     class message : public message_base
                     {
+                        public: typedef string raw_header_list_type;
+                        public: typedef hash_map<string, string> header_list_type;
+                        public: typedef uint32_t status_code_type;
+                        public: typedef string referer_type;
+                        public: typedef hash_map<string, string> post_list_type;
+                        public: typedef string content_type;
+                        public: typedef string path_type;
+                        public: typedef uint32_t id_type;
+                        public: typedef string version_type;
+                        public: typedef string network_layer_type;
+                        public: typedef string host_type;
+                        public: typedef uint32_t port_type;
+                        public: typedef stream stream_type;
+                        public: typedef string url_type;
+                        public: typedef string status_description_type;
+                        public: typedef string method_type;
 
+                        public: stream_type& get_stream() const
+                        {
+                            auto self = *this;
+
+                            return self->stream;
+                        }
+
+                        public: void parse() const
+                        {
+                            auto self = *this;
+
+                            if(self->stream.get_buffer().in_avail())
+                            {
+                                std::istream data_stream(&self->stream.get_buffer());
+
+                                string status_message;
+                                std::getline(data_stream, status_message);
+
+                                string data((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
+
+                                //if(http_version.substr(0, 5) != "HTTP/")
+                                //{
+                                //	std::cout << "Invalid response" << std::endl;
+                                //	return;
+                                //}
+
+                                size_t header_end = data.find("\r\n\r\n");
+
+                                if(header_end != string::npos)
+                                {
+                                    self->raw_header_list = data.substr(0, header_end) + "\r\n";
+
+                                    boost::erase_head(data, header_end);
+                                }
+
+                                self->content = data;
+
+                                boost::regex_error paren(boost::regex_constants::error_paren);
+
+                                try
+                                {
+                                    boost::match_results<std::string::const_iterator> what;
+                                    boost::match_flag_type flags = boost::regex_constants::match_perl | boost::regex_constants::format_perl;
+
+                                    string::const_iterator start = self->raw_header_list.begin();
+                                    string::const_iterator end = self->raw_header_list.end();
+
+                                    while(boost::regex_search(start, end, what, boost::regex("(.+?)\\: (.+?)\r\n"), flags))
+                                    {
+                                        if(what[1].length() > 0)
+                                        {
+                                            //std::cout << what[1] << ": " << what[2] << std::endl;
+                                            self->header_list[what[1]] = what[2];
+                                        }
+
+                                        // update search position:
+                                        start = what[0].second;
+
+                                        // update flags:
+                                        flags |= boost::match_prev_avail;
+                                        flags |= boost::match_not_bob;
+                                    }
+                                }
+                                catch(boost::regex_error const& e)
+                                {
+                                    std::cout << "regex error: " << (e.code() == paren.code() ? "unbalanced parentheses" : "?") << std::endl;
+                                }
+                            }
+                            else if(self->method.length())
+                            {
+                                std::ostream data_stream(&self->stream.get_buffer());
+
+                                if(!self->post_list.empty())
+                                // parse post list
+                                {
+
+                                }
+
+                                if(DEBUG_MESSAGES4)
+                                    std::cout << self->method + " " + self->url + " " + "HTTP" + "/" + self->version + "\r\n" << std::endl;
+
+                                data_stream << self->method + " " + self->url + " " + "HTTP" + "/" + self->version + "\r\n";
+
+                                if(self->header_list.empty() && self->raw_header_list.length())
+                                // turn raw header string into a header list
+                                {
+
+                                }
+
+                                if(!self->header_list.empty())
+                                // header list already exists
+                                {
+                                    if(self->username.length() && self->password.length())
+                                    // add authentication into header list
+                                    {
+                                        if(self->header_list.find("Proxy-Authorization") != self->header_list.end())
+                                        // authentication header doesn't already exist
+                                        {
+                                            //self->header_list["Proxy-Authorization"] = "Basic " << base64encode(ps->username + ":" + ps->password);
+                                        }
+                                    }
+
+                                    // turn header list into raw header string
+
+                                }
+
+                                data_stream << self->raw_header_list + "\r\n";
+                                data_stream << self->content;
+                            }
+                        }
+
+                        private: struct variables
+                        {
+                            variables()
+                            {
+
+                            }
+
+                            ~variables()
+                            {
+
+                            }
+
+                            referer_type referer;
+                            url_type url;
+                            content_type content;
+                            header_list_type header_list;
+                            raw_header_list_type raw_header_list;
+                            status_code_type status_code;
+                            //raw_post_list_type raw_post_list;
+                            post_list_type post_list;
+                            status_description_type status_description;
+                            id_type id;
+                            method_type method;
+                            version_type version;
+                            network_layer_type address;
+                            port_type port;
+                            host_type host;
+                            stream_type stream;
+                            string username;
+                            string password;
+                            string scheme;
+                        };
+
+                        NEXTGEN_INITIALIZE_SHARED_DATA(message, variables);
                     };
 
                     template<typename transport_layer_type>
-                    class layer : public layer_base
+                    class layer : public layer_base<message>
                     {
+                        public: typedef layer<transport_layer_type> this_type;
+                        public: typedef std::function<void(this_type)> accept_successful_event_type;
+                        public: typedef base_event_type accept_failure_event_type;
 
+                        public: virtual void connect(host_type const& host_, port_type port_, connection_successful_event_type successful_handler = 0, connection_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+
+                            if(successful_handler == 0)
+                                successful_handler = self->connection_successful_event;
+
+                            if(failure_handler == 0)
+                                failure_handler = self->connection_failure_event;
+
+                            self->transport_layer_.connect(host_, port_,
+                            [self, successful_handler]
+                            {
+                                successful_handler();
+                            },
+                            [self, failure_handler]
+                            {
+                                failure_handler();
+                            });
+                        }
+
+                        public: virtual void send(message_type request_, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+
+                            self.send(request_.get_stream(), successful_handler, failure_handler);
+                        }
+
+                        public: virtual void send(stream_type stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+
+                            if(successful_handler == 0)
+                                successful_handler = self->send_successful_event;
+
+                            if(failure_handler == 0)
+                                failure_handler = self->send_failure_event;
+
+                            self->transport_layer_.send(stream,
+                            [successful_handler]()
+                            {
+                                successful_handler();
+                            },
+                            [failure_handler]()
+                            {
+                                failure_handler();
+                            });
+                        }
+
+                        public: virtual void receive(receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+
+                            if(successful_handler == 0)
+                                successful_handler = self->receive_successful_event;
+
+                            if(failure_handler == 0)
+                                failure_handler = self->receive_failure_event;
+
+                            message_type response_;
+
+                            self->transport_layer_.receive("#all#", response_.get_stream(),
+                            [&self, &response_, successful_handler]()
+                            {
+                                response_.parse();
+
+                                successful_handler(response_);
+                            },
+                            [self, failure_handler]()
+                            {
+                                failure_handler();
+                            });
+                        }
+
+                        public: virtual void accept(port_type port_, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0)
+                        {
+                            auto self = *this;
+
+                            self->transport_layer_.accept(port_,
+                            [successful_handler](transport_layer_type client)
+                            {
+                                successful_handler(this_type(client));
+                            },
+                            [failure_handler]()
+                            {
+                                failure_handler();
+                            });
+                        }
+
+                        private: struct variables
+                        {
+                            variables(service_type service_) : transport_layer_(transport_layer_type(service_))
+                            {
+
+                            }
+
+                            variables(transport_layer_type transport_layer_) : transport_layer_(transport_layer_)
+                            {
+
+                            }
+
+                            ~variables()
+                            {
+
+                            }
+
+                            event<send_successful_event_type> send_successful_event;
+                            event<send_failure_event_type> send_failure_event;
+                            event<receive_successful_event_type> receive_successful_event;
+                            event<receive_failure_event_type> receive_failure_event;
+                            event<connection_successful_event_type> connection_successful_event;
+                            event<connection_failure_event_type> connection_failure_event;
+                            event<accept_failure_event_type> accept_failure_event;
+                            event<accept_successful_event_type> accept_successful_event;
+
+                            transport_layer_type transport_layer_;
+                        };
+
+                        NEXTGEN_INITIALIZE_SHARED_DATA(layer, variables);
                     };
                 }
 
@@ -1106,9 +1451,72 @@ namespace nextgen
                     };
 
                     template<typename transport_layer_type>
-                    class layer : public layer_base
+                    class layer : public layer_base<message>
                     {
+                        public: typedef layer<transport_layer_type> this_type;
+                        public: typedef std::function<void(this_type)> accept_successful_event_type;
+                        public: typedef base_event_type accept_failure_event_type;
 
+                        public: virtual void connect(host_type const& host_, port_type port_, connection_successful_event_type successful_handler = 0, connection_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+                        }
+
+                        public: virtual void send(message_type request_, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+                        }
+
+                        public: virtual void receive(receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+                        }
+
+                        public: virtual void accept(port_type port_, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0)
+                        {
+                            auto self = *this;
+
+                            self->transport_layer_.accept(port_,
+                            [successful_handler](transport_layer_type client)
+                            {
+                                successful_handler(this_type(client));
+                            },
+                            [failure_handler]()
+                            {
+                                failure_handler();
+                            });
+                        }
+
+                        private: struct variables
+                        {
+                            variables(service_type& service_) : transport_layer_(transport_layer_type(service_))
+                            {
+
+                            }
+
+                            variables(transport_layer_type transport_layer_) : transport_layer_(transport_layer_)
+                            {
+
+                            }
+
+                            ~variables()
+                            {
+
+                            }
+
+                            event<send_successful_event_type> send_successful_event;
+                            event<send_failure_event_type> send_failure_event;
+                            event<receive_successful_event_type> receive_successful_event;
+                            event<receive_failure_event_type> receive_failure_event;
+                            event<connection_successful_event_type> connection_successful_event;
+                            event<connection_failure_event_type> connection_failure_event;
+                            event<accept_failure_event_type> accept_failure_event;
+                            event<accept_successful_event_type> accept_successful_event;
+
+                            transport_layer_type transport_layer_;
+                        };
+
+                        NEXTGEN_INITIALIZE_SHARED_DATA(layer, variables);
                     };
                 }
 
@@ -1120,9 +1528,72 @@ namespace nextgen
                     };
 
                     template<typename transport_layer_type>
-                    class layer : public layer_base
+                    class layer : public layer_base<message>
                     {
+                        public: typedef layer<transport_layer_type> this_type;
+                        public: typedef std::function<void(this_type)> accept_successful_event_type;
+                        public: typedef base_event_type accept_failure_event_type;
 
+                        public: virtual void connect(host_type const& host_, port_type port_, connection_successful_event_type successful_handler = 0, connection_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+                        }
+
+                        public: virtual void send(message_type request_, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+                        }
+
+                        public: virtual void receive(receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+                        }
+
+                        public: virtual void accept(port_type port_, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0)
+                        {
+                            auto self = *this;
+
+                            self->transport_layer_.accept(port_,
+                            [successful_handler](transport_layer_type client)
+                            {
+                                successful_handler(this_type(client));
+                            },
+                            [failure_handler]()
+                            {
+                                failure_handler();
+                            });
+                        }
+
+                        private: struct variables
+                        {
+                            variables(service_type& service_) : transport_layer_(transport_layer_type(service_))
+                            {
+
+                            }
+
+                            variables(transport_layer_type transport_layer_) : transport_layer_(transport_layer_)
+                            {
+
+                            }
+
+                            ~variables()
+                            {
+
+                            }
+
+                            event<send_successful_event_type> send_successful_event;
+                            event<send_failure_event_type> send_failure_event;
+                            event<receive_successful_event_type> receive_successful_event;
+                            event<receive_failure_event_type> receive_failure_event;
+                            event<connection_successful_event_type> connection_successful_event;
+                            event<connection_failure_event_type> connection_failure_event;
+                            event<accept_failure_event_type> accept_failure_event;
+                            event<accept_successful_event_type> accept_successful_event;
+
+                            transport_layer_type transport_layer_;
+                        };
+
+                        NEXTGEN_INITIALIZE_SHARED_DATA(layer, variables);
                     };
                 }
             }
@@ -1137,6 +1608,36 @@ namespace nextgen
         typedef ip::application::ngp::layer<tcp_socket> ngp_client;
         typedef ip::application::ngp::message ngp_message;
 
+
+        template<typename layer_type>
+        void create_server(service service_, uint32_t port_, std::function<void(layer_type)> successful_handler = 0, std::function<void()> failure_handler = 0)
+        {
+            if(DEBUG_MESSAGES)
+                std::cout << "[nextgen:network:server:accept] Accepting client..." << std::endl;
+
+            layer_type layer(service_);
+/*
+            layer.accept(port_,
+            [service_, port_, successful_handler, failure_handler]()
+            {
+                if(DEBUG_MESSAGES)
+                    std::cout << "[nextgen::network::server::accept] Successfully accepted client." << std::endl;
+
+                //successful_handler(layer);
+
+                //create_server<layer_type>(service_, port_, successful_handler, failure_handler);
+            },
+            [service_, port_, successful_handler, failure_handler]()
+            {
+                if(DEBUG_MESSAGES)
+                    std::cout << "[nextgen::network::server::accept] Failed to accept client." << std::endl;
+
+                failure_handler();
+
+                //create_server<layer_type>(service_, port_, successful_handler, failure_handler);
+            });*/
+        }
+/*
         template<typename layer_type>
         class server
         {
@@ -1158,25 +1659,28 @@ namespace nextgen
                     failure_handler = self->accept_failure_event;
 
                 if(DEBUG_MESSAGES)
-                    std::cout << "[nextgen:network:server:accept] " << std::endl;
+                    std::cout << "[nextgen:network:server:accept] Accepting client..." << std::endl;
 
                 layer_type layer(self->service_);
 
                 layer.set_port(self->port_);
 
-                layer.accept([self, layer, successful_handler, failure_handler](asio::error_code const& error)
+                layer.accept(
+                [self, layer, successful_handler, failure_handler]()
                 {
                     if(DEBUG_MESSAGES)
-                        std::cout << "server::accept handler" << std::endl;
+                        std::cout << "[nextgen::network::server::accept] Successfully accepted client." << std::endl;
 
-                    if(!error)
-                    {
-                        successful_handler(layer);
-                    }
-                    else
-                    {
-                        failure_handler();
-                    }
+                    successful_handler(layer);
+
+                    self.accept(successful_handler, failure_handler);
+                },
+                [self, successful_handler, failure_handler]()
+                {
+                    if(DEBUG_MESSAGES)
+                        std::cout << "[nextgen::network::server::accept] Failed to accept client." << std::endl;
+
+                    failure_handler();
 
                     self.accept(successful_handler, failure_handler);
                 });
@@ -1202,7 +1706,7 @@ namespace nextgen
             };
 
             NEXTGEN_INITIALIZE_SHARED_DATA(server, variables);
-        };
+        };*/
     }
 }
 
