@@ -95,8 +95,8 @@
     private: boost::shared_ptr<data_type> ng_data; \
     public: this_type(this_type& t) : ng_data(t.ng_data) { } \
     public: this_type(this_type const& t) : ng_data(t.ng_data) { } \
-    public: template<typename ...argument_types> this_type(argument_types&& ...argument_list) : ng_data(new data_type(argument_list...)) { __VA_ARGS__ } \
-    public: template<typename element_type> this_type(element_type&& t, typename boost::enable_if<boost::is_base_of<this_type, element_type>>::type* dummy = 0) : ng_data(t.ng_data) { } \
+    public: template<typename ...ng_argument_types> this_type(ng_argument_types&& ...argument_list) : ng_data(new data_type(argument_list...)) { __VA_ARGS__ } \
+    public: template<typename ng_argument_type> this_type(ng_argument_type&& t, typename boost::enable_if<boost::is_base_of<this_type, ng_argument_type>>::type* dummy = 0) : ng_data(t.ng_data) { } \
     public: bool operator==(this_type const& t) const { return &(*this->ng_data) == &(*t.ng_data); } \
     public: bool operator==(int t) const { if(t == 0) return this->ng_data == 0; else return 0; } \
     public: bool operator!=(this_type const& t) const { return !this->operator==(t); } \
@@ -174,6 +174,13 @@ namespace nextgen
     {
         return boost::any_cast<T>(a);
     }
+
+    template<typename T, typename A>
+    inline T cast(A a)
+    {
+        return boost::lexical_cast<T>(a);
+    }
+
 
     #if NEXTGEN_PLATFORM == NEXTGEN_PLATFORM_WINDOWS
         const int null = NULL;
@@ -665,6 +672,31 @@ namespace nextgen
                         public: typedef std::function<void(this_type)> accept_successful_event_type;
                         public: typedef base_event_type accept_failure_event_type;
 
+                        public: virtual void initialize()
+                        {
+                            auto self = *this;
+
+                            if(DEBUG_MESSAGES)
+                                std::cout << "[nextgen:network:ip:transport:tcp:socket] (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
+
+                            self->cancel_handler_ = [=](asio::error_code const& error)
+                            {
+                                if(error == asio::error::operation_aborted)
+                                {
+                                    if(DEBUG_MESSAGES)
+                                        std::cout << "[nextgen:network:ip:transport:tcp:socket:cancel_handler] Timer cancelled (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
+                                }
+                                else
+                                {
+                                    if(DEBUG_MESSAGES)
+                                        std::cout << "[nextgen:network:ip:transport:tcp:socket:cancel_handler] Timer called back. Closing socket (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
+
+                                    // bugfix(daemn): read timer doesn't actually cancel
+                                    self.cancel();
+                                }
+                            };
+                        }
+
                         public: virtual host_type const& get_host()
                         {
                             auto self = *this;
@@ -1071,27 +1103,7 @@ namespace nextgen
 
                         NEXTGEN_SHARED_DATA(layer, variables,
                         {
-                            auto self = *this;
-
-                            if(DEBUG_MESSAGES)
-                                std::cout << "[nextgen:network:ip:transport:tcp:socket] (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
-
-                            self->cancel_handler_ = [=](asio::error_code const& error)
-                            {
-                                if(error == asio::error::operation_aborted)
-                                {
-                                    if(DEBUG_MESSAGES)
-                                        std::cout << "[nextgen:network:ip:transport:tcp:socket:cancel_handler] Timer cancelled (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
-                                }
-                                else
-                                {
-                                    if(DEBUG_MESSAGES)
-                                        std::cout << "[nextgen:network:ip:transport:tcp:socket:cancel_handler] Timer called back. Closing socket (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
-
-                                    // bugfix(daemn): read timer doesn't actually cancel
-                                    self.cancel();
-                                }
-                            };
+                            this->initialize();
                         });
                     };
                 }
@@ -1752,11 +1764,11 @@ namespace nextgen
                             auto self = *this;
                         }
 
-                        public: virtual void accept(port_type port_, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0)
+                        public: virtual void accept(port_type port, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0)
                         {
                             auto self = *this;
 
-                            self->transport_layer_.accept(port_,
+                            self->transport_layer_.accept(port,
                             [=](transport_layer_type client)
                             {
                                 successful_handler(this_type(client));
@@ -1769,7 +1781,7 @@ namespace nextgen
 
                         private: struct variables
                         {
-                            variables(service_type& service_) : transport_layer_(service_)
+                            variables(service_type service_) : transport_layer_(service_)
                             {
 
                             }
@@ -1813,14 +1825,14 @@ namespace nextgen
 
 
         template<typename layer_type>
-        void create_server(service service_, uint32_t port_, std::function<void(layer_type)> successful_handler = 0, std::function<void()> failure_handler = 0)
+        void create_server(service service_, uint32_t port, std::function<void(layer_type)> successful_handler = 0, std::function<void()> failure_handler = 0)
         {
             if(DEBUG_MESSAGES2)
                 std::cout << "[nextgen:network:server:accept] Waiting for client..." << std::endl;
 
             layer_type server(service_);
 
-            server.accept(port_,
+            server.accept(port,
             [=](layer_type client)
             {
                 if(DEBUG_MESSAGES2)
@@ -1846,6 +1858,9 @@ namespace nextgen
 {
     namespace math
     {
+        /**
+        Old vector class I had laying around. Will do for now. Added NEXTGEN_SHARED_DATA. Removed std::vector.
+        */
         template<typename element_type>
         class vector;
 
@@ -1855,165 +1870,89 @@ namespace nextgen
         template<typename element_type> vector<element_type> operator*(float, vector<element_type> const&);
         template<typename element_type> vector<element_type> operator/(vector<element_type> const&, float);
         template<typename element_type> vector<element_type> operator/(float, vector<element_type> const&);
-        template<typename element_type> vector<element_type> operator-(vector<element_type> const&);
-        template<typename element_type> vector<element_type> operator+(vector<element_type> const&);
-
+        template<typename element_type> vector<element_type> operator--(vector<element_type> const&);
+        template<typename element_type> vector<element_type> operator++(vector<element_type> const&);
 
         template <typename element_type>
-        class vector : std::vector<element_type>
+        class vector
         {
-            public: explicit vector();
-            public: explicit vector(const element_type);
-            public: explicit vector(const element_type, const element_type);
-            public: explicit vector(const element_type, const element_type, const element_type);
-            public: explicit vector(const element_type, const element_type, const element_type, const element_type);
-
-            public: void initialize(const element_type, const element_type, const element_type, const element_type);
-
-            public: const element_type x() const;
-            public: const element_type y() const;
-            public: const element_type z() const;
-            public: const element_type w() const;
-
-            public: void x(const element_type);
-            public: void y(const element_type);
-            public: void z(const element_type);
-            public: void w(const element_type);
-
             //public: virtual const string to_string() const;
 
-            public: static vector<element_type> null();
+            public: static vector<element_type> null() { return vector<element_type>(0, 0, 0, 0); }
 
-            public: static vector<element_type> forward();
-            public: static vector<element_type> backward();
+            public: static vector<element_type> up() { return vector<element_type>(0, 1, 0, 0); }
+            public: static vector<element_type> down() { return vector<element_type>(0, -1, 0, 0); }
 
-            public: static vector<element_type> up();
-            public: static vector<element_type> down();
+            public: static vector<element_type> left() { return vector<element_type>(-1, 0, 0, 0); }
+            public: static vector<element_type> right() { return vector<element_type>(1, 0, 0, 0); }
 
-            public: static vector<element_type> left();
-            public: static vector<element_type> right();
+            public: static vector<element_type> unit_x() { return vector<element_type>(1, 0, 0, 0); }
+            public: static vector<element_type> unit_y() { return vector<element_type>(0, 1, 0, 0); }
+            public: static vector<element_type> unit_z() { return vector<element_type>(0, 0, 1, 0); }
 
-            public: static vector<element_type> unit_x();
-            public: static vector<element_type> unit_y();
-            public: static vector<element_type> unit_z();
+            public: static vector<element_type> zero() { return vector<element_type>(0, 0, 0, 0); }
+            public: static vector<element_type> one() { return vector<element_type>(1, 1, 1, 1); }
 
-            public: static vector<element_type> zero();
-            public: static vector<element_type> one();
+            public: vector<element_type> operator=(vector<element_type> v)
+            {
+                auto self = *this;
+
+                self->x = v->x;
+                self->y = v->y;
+                self->z = v->z;
+                self->w = v->w;
+
+                return self;
+            }
 
             //private: friend std::ostream& operator<<(std::ostream&, const vector<element_type>&);
-            private: template<typename y> friend vector<y> operator+(vector<y> const&, vector<y> const&);
-            private: template<typename y> friend vector<y> operator-(vector<y> const&, vector<element_type> const&);
-            private: template<typename y> friend vector<y> operator*(vector<y> const&, float);
-            private: template<typename y> friend vector<y> operator*(float, vector<y> const&);
-            private: template<typename y> friend vector<y> operator/(vector<y> const&, float);
-            private: template<typename y> friend vector<y> operator/(float, vector<y> const&);
-            private: template<typename y> friend vector<y> operator-(vector<y> const&);
-            private: template<typename y> friend vector<y> operator+(vector<y> const&);
+            private: template<typename y> friend vector<y> operator+(vector<y>, vector<y>);
+            private: template<typename y> friend vector<y> operator-(vector<y>, vector<element_type>);
+            private: template<typename y> friend vector<y> operator*(vector<y>, float);
+            private: template<typename y> friend vector<y> operator*(float, vector<y>);
+            private: template<typename y> friend vector<y> operator/(vector<y>, float);
+            private: template<typename y> friend vector<y> operator/(float, vector<y>);
+            private: template<typename y> friend vector<y> operator--(vector<y>);
+            private: template<typename y> friend vector<y> operator++(vector<y>);
+
+            private: struct variables
+            {
+                variables(element_type const x = 0, element_type const y = 0, element_type const z = 0, element_type const w = 0)
+                {
+                    this->x = x;
+                    this->y = y;
+                    this->z = z;
+                    this->w = w;
+                }
+
+                ~variables()
+                {
+
+                }
+
+                element_type x;
+                element_type y;
+                element_type z;
+                element_type w;
+            };
+
+            NEXTGEN_SHARED_DATA(vector, variables);
         };
 
+        //template<class element_type> using vector2 = vector<element_type>;
+        //template<class element_type> using vector3 = vector<element_type>;
+/*
         template <typename element_type>
         class vector2 : public vector<element_type>
         {
-            public: explicit vector2() : vector<element_type>() { }
+            //public: explicit vector2() : vector<element_type>() { }
 
             //public: operator vector3();
             //public: operator vector3() const;
             //public: operator vector4();
             //public: operator vector4() const;
-        };
+        };*/
 
-        template <typename element_type>
-        inline vector<element_type> vector<element_type>::null()
-        {
-            return new vector<element_type>();
-        }
-
-        template <typename element_type>
-        inline vector<element_type>::vector() : std::vector<element_type>(4)
-        {
-            this->initialize(0, 0, 0, 0);
-        }
-
-        template <typename element_type>
-        inline vector<element_type>::vector(const element_type x) : std::vector<element_type>(1)
-        {
-            this->initialize(x, 0, 0, 0);
-        }
-
-        template <typename element_type>
-        inline vector<element_type>::vector(const element_type x, const element_type y) : std::vector<element_type>(2)
-        {
-            this->initialize(x, y, 0, 0);
-        }
-
-        template <typename element_type>
-        inline vector<element_type>::vector(const element_type x, const element_type y, const element_type z) : std::vector<element_type>(3)
-        {
-            this->initialize(x, y, z, 0);
-        }
-
-        template <typename element_type>
-        inline vector<element_type>::vector(const element_type x, const element_type y, const element_type z, const element_type w) : std::vector<element_type>(4)
-        {
-            this->initialize(x, y, z, w);
-        }
-
-        template <typename element_type>
-        inline void vector<element_type>::initialize(const element_type x = 0, const element_type y = 0, const element_type z = 0, const element_type w = 0)
-        {
-            this->x(x);
-            this->y(y);
-            this->z(z);
-            this->w(w);
-        }
-
-        template <typename element_type>
-        inline const element_type vector<element_type>::x() const
-        {
-            return this->at(0);
-        }
-
-        template <typename element_type>
-        inline const element_type vector<element_type>::y() const
-        {
-            return this->at(1);
-        }
-
-        template <typename element_type>
-        inline const element_type vector<element_type>::z() const
-        {
-            return this->at(2);
-        }
-
-        template <typename element_type>
-        inline const element_type vector<element_type>::w() const
-        {
-            return this->at(3);
-        }
-
-        template <typename element_type>
-        inline void vector<element_type>::x(const element_type x)
-        {
-            (*this)[0] = x;
-        }
-
-        template <typename element_type>
-        inline void vector<element_type>::y(const element_type y)
-        {
-            (*this)[1] = y;
-        }
-
-        template <typename element_type>
-        inline void vector<element_type>::z(const element_type z)
-        {
-            (*this)[2] = z;
-        }
-
-        template <typename element_type>
-        inline void vector<element_type>::w(const element_type w)
-        {
-            (*this)[3] = w;
-        }
         /*
         template <typename element_type>
         inline std::ostream& operator<<(std::ostream& os, const vector<element_type>& v)
@@ -2024,149 +1963,75 @@ namespace nextgen
         }*/
 
         template <typename element_type>
-        inline vector<element_type> operator+(vector<element_type> const& v1, vector<element_type> const& v2)
+        inline vector<element_type> operator+(vector<element_type> v1, vector<element_type> v2)
         {
             return v1.clone().add(v2);
         }
 
         template <typename element_type>
-        inline vector<element_type> operator-(vector<element_type> const& v1, vector<element_type> const& v2)
+        inline vector<element_type> operator-(vector<element_type> v1, vector<element_type> v2)
         {
             return v1.clone().subtract(v2);
         }
 
         template <typename element_type>
-        inline vector<element_type> operator*(vector<element_type> const& v, float m)
+        inline vector<element_type> operator*(vector<element_type> v, float m)
         {
             return v.clone().multiply(m);
         }
 
         template <typename element_type>
-        inline vector<element_type> operator*(float m, vector<element_type> const& v)
+        inline vector<element_type> operator*(float m, vector<element_type> v)
         {
             return v.clone().multiply(m);
         }
 
         template <typename element_type>
-        inline vector<element_type> operator/(vector<element_type> const& v, float m)
+        inline vector<element_type> operator/(vector<element_type> v, float m)
         {
             return v.clone().divide(m);
         }
 
         template <typename element_type>
-        inline vector<element_type> operator/(float m, vector<element_type> const& v)
+        inline vector<element_type> operator/(float m, vector<element_type> v)
         {
             return v.clone().divide(m);
         }
 
         template <typename element_type>
-        inline vector<element_type> operator-(vector<element_type> const& v)
+        inline vector<element_type> operator--(vector<element_type> v)
         {
-            v->x(--v->x());
-            v->y(--v->y());
-            v->z(--v->z());
-            v->w(--v->w());
+            v->x = --v->x;
+            v->y = --v->y;
+            v->z = --v->z;
+            v->w = --v->w;
 
             return v;
         }
 
         template <typename element_type>
-        inline vector<element_type> operator+(vector<element_type> const& v)
+        inline vector<element_type> operator++(vector<element_type> v)
         {
-            v->x(++v->x());
-            v->y(++v->y());
-            v->z(++v->z());
-            v->w(++v->w());
+            v->x = ++v->x;
+            v->y = ++v->y;
+            v->z = ++v->z;
+            v->w = ++v->w;
 
             return v;
         }
+/*
+        template <typename element_type>
+        inline vector<element_type> operator=(vector<element_type> const& v1, vector<element_type> const& v2)
+        {
+            v1->x(v2->x());
+            v1->y(v2->y());
+            v1->z(v2->z());
+            v1->w(v2->w());
 
-
+            return v1;
+        }*/
     }
 }
 
 
-namespace nextgen
-{
-    namespace engine
-    {
-        class world_object
-        {
 
-        };
-
-        class world_npc : public world_object
-        {
-            public: typedef uint32_t id_type;
-            public: typedef string name_type;
-            public: typedef int vector_type;
-            public: typedef math::vector2<vector_type> position_type;
-            public: typedef math::vector2<vector_type> direction_type;
-        };
-
-        class world_monster : public world_npc
-        {
-
-        };
-
-        class world_player : public world_npc
-        {
-            private: struct variables
-            {
-                variables() : id(0), name("Undefined")
-                {
-
-                }
-
-                ~variables()
-                {
-
-                }
-
-                id_type id;
-                name_type name;
-                position_type position;
-                direction_type direction;
-            };
-
-            NEXTGEN_SHARED_DATA(world_player, variables);
-        };
-    }
-}
-
-
-namespace stoke
-{
-	class game : public nextgen::singleton<game>
-	{
-		public: void initialize()
-		{
-		    auto self = *this;
-
-        }
-
-		public: void run();
-
-        private: struct variables
-        {
-            variables()
-            {
-
-            }
-
-            ~variables()
-            {
-
-            }
-
-            nextgen::network::service service;
-        };
-
-        NEXTGEN_SHARED_DATA(game, variables);
-	};
-
-	class game_message
-	{
-
-	};
-}

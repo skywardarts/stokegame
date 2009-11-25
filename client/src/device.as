@@ -18,8 +18,8 @@
 		
 		public var keyboard:keyboard_device;
 		
-		public var player:world_player;
-		public var world:world_instance;
+		public var player:game_player;
+		public var world:game_world;
 		
 		public function device(mc:MovieClip)
 		{
@@ -71,14 +71,12 @@
 		{
 			debug.log("[engine:chat:event] Creating player...");
 			
-			var player:world_player = new world_player(this.application.get_root());
-			
-			player.health = 100;
-			player.mana = 100;
-			player.x_position = event.x_position;
-			player.y_position = event.y_position;
-			player.name = event.player_name;
+			var player:game_player = new game_player(this.application.get_root());
+
 			player.id = event.player_id;
+			player.name = event.player_name;
+			player.position.x = event.x_position;
+			player.position.y = event.y_position;
 			
 			if(event.control)
 				this.player = player;
@@ -94,14 +92,14 @@
 		
 		public function on_update_player_position(event:update_player_position_event):void
 		{
-			var player:world_player = this.world.player_list[event.player_id];
+			var player:game_player = this.world.player_list[event.player_id];
 			
 			if(player != null)
 			{
 				debug.log("[engine:chat:event] Updating player position.");
 
-				player.x_position = event.x_position;
-				player.y_position = event.y_position;
+				player.position.x = event.x_position;
+				player.position.y = event.y_position;
 			}
 			else
 			{
@@ -158,7 +156,7 @@
 			
 			debug.log("[engine:chat] Successfully connected.");
 			
-			this.world = new world_instance();
+			this.world = new game_world();
 			
 			var message:login_event = new login_event();
 			
@@ -201,7 +199,7 @@
 		{
 			var domain:String = "174.1.141.120";//this.application.get_domain();
 			
-			debug.log("[engine:chat] Attempting to connect (" + domain + ":" + 6111 + ").");
+			debug.log("[engine:chat] Attempting to connect (" + domain + ":" + 6110 + ").");
 			
 			Security.loadPolicyFile("xmlsocket://" + domain + ":" + "843");
 			
@@ -234,6 +232,8 @@ include "../../../flashx/src/include.as";
 
 
 include "chat_socket_stream.as";
-include "world.as";
-include "world_npc.as";
-include "world_player.as";
+include "game_world.as";
+include "game_object.as";
+include "game_npc.as";
+include "game_player.as";
+include "game_monster.as";

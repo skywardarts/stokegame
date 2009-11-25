@@ -1,18 +1,17 @@
 ﻿import flash.utils.ByteArray;
 
-class world_npc
+class game_npc extends game_object
 {
-	public var health:int;
-	public var mana:int;
-	public var name:String;
-	public var mc:MovieClip;
 	public var id:int;
+	public var name:String;
+	public var position:math_vector2;
+	public var rotation:math_vector2;
 	
-	public function world_npc(mc:MovieClip)
+	public var mc:MovieClip;
+	
+	public function game_npc(mc:MovieClip)
 	{
-		this.health = 0;
-		this.mana = 0;
-		this.name = "None";
+		this.name = "Undefined";
 		
 		this.mc = new MovieClip();
 		//this.mc.x = 0; this.mc.y = 0;
@@ -33,27 +32,16 @@ class world_npc
 		bm.x = 0; bm.y = 20;
 		bm.width = 34; bm.height = 34;
 		
-		
 		this.mc.addChild(bm);
 	}
 	
-	public function set x_position(x:Number):void 
+	public function update():void
 	{
-		this.mc.x = x;
-	}
-
-	public function get x_position():Number
-	{
-		return this.mc.x;
+		//if(this.position.changed)
+		this.mc.x = this.position.x;
+		this.mc.y = this.position.y * -1;
+		
+		//if(this.rotation.changed)
 	}
 	
-	public function set y_position(y:Number):void 
-	{
-		this.mc.y = y * -1;
-	}
-
-	public function get y_position():Number
-	{
-		return this.mc.y;
-	}
 }
