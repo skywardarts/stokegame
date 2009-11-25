@@ -2,8 +2,8 @@
 
 class game_player extends game_npc
 {
-	public function game_player(mc:MovieClip)
+	public function game_player()
 	{
-		super(mc);
+		
 	}
 }

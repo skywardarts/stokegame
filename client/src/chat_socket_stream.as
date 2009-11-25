@@ -98,16 +98,15 @@ class login_event implements socket_event
 class update_player_position_event implements socket_event
 {
 	public var player_id:int;
-	public var x_position:int;
-	public var y_position:int;
+	public var position:math_vector2;
 	
 	public function pack():ByteArray
 	{
 		var ba:ByteArray = new ByteArray();
 		
 		ba.writeInt(this.player_id);
-		ba.writeInt(this.x_position);
-		ba.writeInt(this.y_position);
+		ba.writeInt(this.position.x);
+		ba.writeInt(this.position.y);
 		
 		return ba;
 	}
@@ -117,8 +116,8 @@ class update_player_position_event implements socket_event
 		//var event:socket_event = new update_player_position_event();
 		
 		this.player_id = ba.readInt();
-		this.x_position = ba.readInt();
-		this.y_position = ba.readInt();
+		this.position.x = ba.readInt();
+		this.position.y = ba.readInt();
 
 		//return event;
 	}
@@ -128,8 +127,8 @@ class update_player_position_event implements socket_event
 		var e:update_player_position_event = new update_player_position_event();
 		
 		e.player_id = this.player_id;
-		e.x_position = this.x_position;
-		e.y_position = this.y_position;
+		e.position.x = this.position.x;
+		e.position.y = this.position.y;
 		
 		return e;
 	}
@@ -142,22 +141,20 @@ class update_player_position_event implements socket_event
 
 class update_player_direction_event implements socket_event
 {
-	//public static const id:int = 4;
+	public var direction:math_vector2;
 	
-	public static const direction_none:int = 1;
-	public static const direction_up:int = 2;
-	public static const direction_right:int = 3;
-	public static const direction_down:int = 4;
-	public static const direction_left:int = 5;
-	
-	public var direction_id:int;
+	public function update_player_direction_event()
+	{
+		this.direction = new math_vector2();
+	}
 	
 	public function pack():ByteArray
 	{
 		var ba:ByteArray = new ByteArray();
 
-		ba.writeInt(this.direction_id);
-		ba.writeInt(math_helper.random_int(0, 9999));
+		ba.writeInt(this.direction.x);
+		ba.writeInt(this.direction.y);
+		//ba.writeInt(math_helper.random_int(0, 9999));
 		
 		return ba;
 	}
@@ -216,21 +213,22 @@ class create_player_event implements socket_event
 {
 	//public static const id:int = 3;
 	
-	public var player_id:int;
-	public var player_name:String;
-	public var x_position:int; 
-	public var y_position:int;
+	public var player:game_player;
+	public var position:math_vector2; 
+	public var rotation:math_vector2;
 	public var control:Boolean;
 	
 	public function pack():ByteArray
 	{
 		var ba:ByteArray = new ByteArray();
 		
-		ba.writeInt(this.player_id);
-		ba.writeInt(this.player_name.length);
-		ba.writeUTFBytes(this.player_name);
-		ba.writeInt(this.x_position);
-		ba.writeInt(this.y_position);
+		ba.writeInt(this.player.id);
+		ba.writeInt(this.player.name.length);
+		ba.writeUTFBytes(this.player.name);
+		ba.writeInt(this.position.x);
+		ba.writeInt(this.position.y);
+		ba.writeInt(this.rotation.x);
+		ba.writeInt(this.rotation.y);
 		ba.writeBoolean(this.control);
 		
 		return ba;
@@ -240,11 +238,13 @@ class create_player_event implements socket_event
 	{
 		//var event:socket_event = new update_player_position_event();
 		
-		this.player_id = ba.readInt();
+		this.player.id = ba.readInt();
 		var player_name_length:int = ba.readInt();
-		this.player_name = ba.readUTFBytes(player_name_length);
-		this.x_position = ba.readInt();
-		this.y_position = ba.readInt();
+		this.player.name = ba.readUTFBytes(player_name_length);
+		this.position.x = ba.readInt();
+		this.position.y = ba.readInt();
+		this.rotation.x = ba.readInt();
+		this.rotation.y = ba.readInt();
 		this.control = ba.readBoolean();
 		
 		//return event;
@@ -254,10 +254,9 @@ class create_player_event implements socket_event
 	{
 		var e:create_player_event = new create_player_event();
 		
-		e.player_id = this.player_id;
-		e.player_name = this.player_name;
-		e.x_position = this.x_position;
-		e.y_position = this.y_position;
+		e.player = this.player;
+		e.position = this.position;
+		e.rotation = this.rotation;
 		e.control = this.control;
 		
 		return e;
