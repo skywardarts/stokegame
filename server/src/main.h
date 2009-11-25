@@ -125,7 +125,8 @@ std::string to_string(element_type element)
 	return boost::lexical_cast<std::string>(element);
 }
 
-int to_int(std::string const& element)
+template<typename element_type>
+int to_int(element_type element)
 {
 	return boost::lexical_cast<int>(element);
 }
@@ -1159,10 +1160,10 @@ namespace nextgen
                         {
                             auto self = *this;
 
+                            std::ostream data_stream(&self->stream.get_buffer());
+
                             if(self->status_code)
                             {
-                               std::ostream data_stream(&self->stream.get_buffer());
-
                                 switch(self->status_code)
                                 {
                                     case 200: self->status_description = "OK"; break;
@@ -1204,8 +1205,6 @@ namespace nextgen
                             }
                             else if(self->method.length())
                             {
-                                std::ostream data_stream(&self->stream.get_buffer());
-
                                 if(!self->post_list.empty())
                                 // parse post list
                                 {
@@ -1502,6 +1501,9 @@ namespace nextgen
                         {
                             auto self = *this;
 
+                            std::ostream data_stream(&self->stream.get_buffer());
+
+                            data_stream << self->content;
                         }
 
                         public: void parse_input() const
@@ -1512,6 +1514,7 @@ namespace nextgen
                             {
                                 std::istream data_stream(&self->stream.get_buffer());
 
+                                self->content = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
                             }
 
                         }
@@ -1689,6 +1692,9 @@ namespace nextgen
                         {
                             auto self = *this;
 
+                            std::ostream data_stream(&self->stream.get_buffer());
+
+                            data_stream << self->content;
                         }
 
                         public: void parse_input() const
@@ -1698,6 +1704,8 @@ namespace nextgen
                             if(self->stream.get_buffer().in_avail())
                             {
                                 std::istream data_stream(&self->stream.get_buffer());
+
+                                self->content = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
 
                             }
 
@@ -2155,5 +2163,10 @@ namespace stoke
         };
 
         NEXTGEN_SHARED_DATA(game, variables);
+	};
+
+	class game_message
+	{
+
 	};
 }

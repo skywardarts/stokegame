@@ -1,4 +1,4 @@
-﻿package engine
+﻿package src
 {
 	import flash.display.MovieClip;
 	import flash.system.Security;
@@ -199,13 +199,13 @@
 		
 		public function connect():void
 		{
-			var domain:String = this.application.get_domain();
+			var domain:String = "174.1.141.120";//this.application.get_domain();
 			
 			debug.log("[engine:chat] Attempting to connect (" + domain + ":" + 6111 + ").");
 			
 			Security.loadPolicyFile("xmlsocket://" + domain + ":" + "843");
 			
-			this.chat_client.connect(domain, 6111, connect_successful_handler, connect_failure_handler);
+			this.chat_client.connect(domain, 6110, connect_successful_handler, connect_failure_handler);
 			
 			var packet:network_packet = new network_packet();
 			
@@ -230,7 +230,7 @@
 	}
 }
 
-include "../flashx/include.as";
+include "../../../flashx/src/include.as";
 
 
 include "chat_socket_stream.as";
