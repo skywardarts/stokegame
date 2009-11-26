@@ -1,0 +1,24 @@
+<projectDescription>
+  <id>1259196612730</id>
+  <name>Stoke Game</name>
+  <asVersion>0</asVersion>
+  <boundTemplate>file:///C|/Documents and Settings/zzz/Local Settings/Application Data/Adobe/Flash CS4/en/Configuration/Project/templates/boundClass_as3.as</boundTemplate>
+  <classTemplate>file:///C|/Documents and Settings/zzz/Local Settings/Application Data/Adobe/Flash CS4/en/Configuration/Project/templates/standardClass_as3.as</classTemplate>
+  <classPath>.</classPath>
+  <defaultApp/>
+  <rootURI>file:///S|/projects/stokegame/client/</rootURI>
+  <flexSDK/>
+  <sources editable="false"/>
+  <libraries editable="false"/>
+  <externalLibraries editable="false"/>
+  <compileList editable="false"/>
+  <recentFiles editable="false">
+    <uri label="game_npc.as">file:///S|/projects/stokegame/client/src/game_npc.as</uri>
+    <uri label="game.as">file:///S|/projects/stokegame/client/src/game.as</uri>
+    <uri label="chat_socket_stream.as">file:///S|/projects/stokegame/client/src/chat_socket_stream.as</uri>
+    <uri label="index.fla">file:///S|/projects/stokegame/client/index.fla</uri>
+    <uri label="game_player.as">file:///S|/projects/stokegame/client/src/game_player.as</uri>
+    <uri label="game_world.as">file:///S|/projects/stokegame/client/src/game_world.as</uri>
+  </recentFiles>
+  <locations editable="false"/>
+</projectDescription>

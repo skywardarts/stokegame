@@ -2,7 +2,7 @@
 {
 	function pack():ByteArray;
 	function unpack(ba:ByteArray):void;
-	function copy():socket_event;
+	function clone():socket_event;
 	function get id():int;
 	//public static const id:int;
 	/*
@@ -50,7 +50,7 @@ class keep_alive_event implements socket_event
 		this.status_id = ba.readInt();
 	}
 	
-	public function copy():socket_event
+	public function clone():socket_event
 	{
 		return this;
 	}
@@ -84,7 +84,7 @@ class login_event implements socket_event
 		
 	}
 	
-	public function copy():socket_event
+	public function clone():socket_event
 	{
 		return this;
 	}
@@ -95,10 +95,17 @@ class login_event implements socket_event
 	}
 }
 
+
+
 class update_player_position_event implements socket_event
 {
 	public var player_id:int;
 	public var position:math_vector2;
+	
+	public function update_player_position_event()
+	{
+		this.position = new math_vector2();
+	}
 	
 	public function pack():ByteArray
 	{
@@ -122,15 +129,9 @@ class update_player_position_event implements socket_event
 		//return event;
 	}
 	
-	public function copy():socket_event
+	public function clone():socket_event
 	{
-		var e:update_player_position_event = new update_player_position_event();
-		
-		e.player_id = this.player_id;
-		e.position.x = this.position.x;
-		e.position.y = this.position.y;
-		
-		return e;
+		return new update_player_position_event();
 	}
 
 	public function get id():int
@@ -139,21 +140,21 @@ class update_player_position_event implements socket_event
 	}
 }
 
-class update_player_direction_event implements socket_event
+class update_player_rotation_event implements socket_event
 {
-	public var direction:math_vector2;
+	public var rotation:math_vector2;
 	
-	public function update_player_direction_event()
+	public function update_player_rotation_event()
 	{
-		this.direction = new math_vector2();
+		this.rotation = new math_vector2();
 	}
 	
 	public function pack():ByteArray
 	{
 		var ba:ByteArray = new ByteArray();
 
-		ba.writeInt(this.direction.x);
-		ba.writeInt(this.direction.y);
+		ba.writeInt(this.rotation.x);
+		ba.writeInt(this.rotation.y);
 		//ba.writeInt(math_helper.random_int(0, 9999));
 		
 		return ba;
@@ -164,7 +165,7 @@ class update_player_direction_event implements socket_event
 		
 	}
 	
-	public function copy():socket_event
+	public function clone():socket_event
 	{
 		return this;
 	}
@@ -197,7 +198,7 @@ class update_player_event implements socket_event
 		ba.readBytes(this.data, ba.position);
 	}
 	
-	public function copy():socket_event
+	public function clone():socket_event
 	{
 		return this;
 	}
@@ -218,6 +219,14 @@ class create_player_event implements socket_event
 	public var rotation:math_vector2;
 	public var control:Boolean;
 	
+	public function create_player_event()
+	{
+		this.player = new game_player();
+		this.position = new math_vector2();
+		this.rotation = new math_vector2();
+		
+	}
+	
 	public function pack():ByteArray
 	{
 		var ba:ByteArray = new ByteArray();
@@ -237,7 +246,7 @@ class create_player_event implements socket_event
 	public function unpack(ba:ByteArray):void
 	{
 		//var event:socket_event = new update_player_position_event();
-		
+		ba.position = 0;
 		this.player.id = ba.readInt();
 		var player_name_length:int = ba.readInt();
 		this.player.name = ba.readUTFBytes(player_name_length);
@@ -250,16 +259,9 @@ class create_player_event implements socket_event
 		//return event;
 	}
 	
-	public function copy():socket_event
+	public function clone():socket_event
 	{
-		var e:create_player_event = new create_player_event();
-		
-		e.player = this.player;
-		e.position = this.position;
-		e.rotation = this.rotation;
-		e.control = this.control;
-		
-		return e;
+		return new create_player_event();
 	}
 
 	public function get id():int
@@ -303,7 +305,7 @@ class chat_socket_stream
 		this.add_message_handler(new login_event());
 		this.add_message_handler(new create_player_event());
 		this.add_message_handler(new update_player_position_event());
-		this.add_message_handler(new update_player_direction_event());
+		this.add_message_handler(new update_player_rotation_event());
 	}
 	
 	public function connect(host:String, port:int, successful:Function, failure:Function):void
@@ -331,6 +333,8 @@ class chat_socket_stream
 					var message_id:int = self.data.readInt();
 					var message_length:int = self.data.readInt();
 					var message_data:ByteArray = new ByteArray();
+					
+					trace("Incoming packet, id: " + message_id);
 
 					if(self.data.bytesAvailable >= message_length)
 					{
@@ -338,7 +342,7 @@ class chat_socket_stream
 						
 						//self.message_handler_list[message_id]
 						
-						var event:socket_event = self.message_handler_list[message_id].copy();
+						var event:socket_event = self.message_handler_list[message_id].clone();
 						
 						event.unpack(message_data);
 						

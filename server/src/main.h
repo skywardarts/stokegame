@@ -602,13 +602,23 @@ namespace nextgen
                         {
                             auto self = *this;
 
-                            asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
+                            if(!self.is_open())
+                            {
+                                asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
 
-                            self->accepter_.open(endpoint.protocol());
-                            self->accepter_.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+                                try
+                                {
+                                    self->accepter_.open(endpoint.protocol());
+                                    self->accepter_.set_option(asio::ip::tcp::acceptor::reuse_address(true));
 
-                            self->accepter_.bind(endpoint);
-                            self->accepter_.listen();
+                                    self->accepter_.bind(endpoint);
+                                    self->accepter_.listen();
+                                }
+                                catch(std::exception& e)
+                                {
+                                    std::cout << "[nextgen:network:ip:transport:tcp:accepter] Failed to bind port " << port << "." << std::endl;
+                                }
+                            }
                         }
 
                         public: bool is_open()
@@ -622,7 +632,15 @@ namespace nextgen
                         {
                             auto self = *this;
 
-                            self->accepter_.async_accept(socket_, handler_);
+                            if(self.is_open())
+                            {
+                                self->accepter_.async_accept(socket_, handler_);
+                            }
+                            else
+                            {
+                                asio::error_code ec = asio::error_code(asio::error::try_again);
+                                handler_(ec);
+                            }
                         }
 
                         private: struct variables
@@ -819,15 +837,6 @@ namespace nextgen
 
                                     //todo(daemn) add additional endpoint connection tries
                                 }
-                                else if(error == asio::error::operation_aborted)
-                                {
-                                    if(DEBUG_MESSAGES3)
-                                        std::cout << "<socket::connect handler> Resolve operation aborted." << std::endl;
-
-                                    self.close();
-
-                                    failure_handler();
-                                }
                                 else
                                 {
                                     if(self->timeout_ > 0)
@@ -898,26 +907,17 @@ namespace nextgen
                                 {
                                     successful_handler();
                                 }
-                                else if(error == asio::error::eof)
+                                /*else if(error == asio::error::eof)
                                 {
                                     if(DEBUG_MESSAGES4)
                                         std::cout << "<socket::write handler> eof" << std::endl;
 
                                     successful_handler();
-                                }
-                                else if(error == asio::error::operation_aborted)
-                                {
-                                    if(DEBUG_MESSAGES3)
-                                        std::cout << "<socket::write handler> Send operation aborted." << std::endl;
-
-                                    self.close();
-
-                                    failure_handler();
-                                }
+                                }*/
                                 else
                                 {
                                     if(DEBUG_MESSAGES4)
-                                        std::cout << "<socket::write handler> Error: " << asio::system_error(error).what() << std::endl;
+                                        std::cout << "<socket::write handler> Error: " << error.message() << std::endl;
 
                                     self.close();
 
@@ -984,7 +984,7 @@ namespace nextgen
                                 else
                                 {
                                     if(DEBUG_MESSAGES4)
-                                        std::cout << "<socket::receive handler> Error: " << asio::system_error(error).what() << std::endl;
+                                        std::cout << "<socket::receive handler> Error: " << error.message() << std::endl;
 
                                     self.close();
 
@@ -1035,16 +1035,16 @@ namespace nextgen
                                 if(!error)
                                 {
                                     successful_handler(client);
+
+                                    self.accept(port_, successful_handler, failure_handler);
                                 }
                                 else
                                 {
                                     if(DEBUG_MESSAGES4)
-                                        std::cout << "[nextgen:network:ip:transport:tcp:socket:accept] Error: " << asio::system_error(error).what() << std::endl;
+                                        std::cout << "[nextgen:network:ip:transport:tcp:socket:accept] Error: " << error.message() << std::endl;
 
                                     failure_handler();
                                 }
-
-                                self.accept(port_, successful_handler, failure_handler);
                             });
                         }
 
@@ -1706,7 +1706,7 @@ namespace nextgen
 
                             std::ostream data_stream(&self->stream.get_buffer());
 
-                            data_stream << self->content;
+                            //data_stream << self->content;
                         }
 
                         public: void parse_input() const
@@ -1717,7 +1717,7 @@ namespace nextgen
                             {
                                 std::istream data_stream(&self->stream.get_buffer());
 
-                                self->content = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
+                                //self->content = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
 
                             }
 
@@ -1754,14 +1754,68 @@ namespace nextgen
                             auto self = *this;
                         }
 
+
+                        public: virtual void disconnect() const
+                        {
+                            auto self = *this;
+
+                            self->transport_layer_.close();
+                        }
+
                         public: virtual void send(message_type request_, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
+
+                            request_.parse_output();
+
+                            self.send(request_.get_stream(), successful_handler, failure_handler);
+                        }
+
+                        public: virtual void send(stream_type stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        {
+                            auto self = *this;
+
+                            if(successful_handler == 0)
+                                successful_handler = self->send_successful_event;
+
+                            if(failure_handler == 0)
+                                failure_handler = self->send_failure_event;
+
+                            self->transport_layer_.send(stream,
+                            [=]()
+                            {
+                                successful_handler();
+                            },
+                            [=]()
+                            {
+                                failure_handler();
+                            });
                         }
 
                         public: virtual void receive(receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
+
+                            if(successful_handler == 0)
+                                successful_handler = self->receive_successful_event;
+
+                            if(failure_handler == 0)
+                                failure_handler = self->receive_failure_event;
+
+                            message_type response2;
+                            auto response = response2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
+
+                            self->transport_layer_.receive("#all#", response.get_stream(),
+                            [=]()
+                            {
+                                response.parse_input();
+
+                                successful_handler(response);
+                            },
+                            [=]()
+                            {
+                                failure_handler();
+                            });
                         }
 
                         public: virtual void accept(port_type port, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0)

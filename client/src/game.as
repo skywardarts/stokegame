@@ -13,8 +13,6 @@
 		{
 			this.world = new game_world();
 			
-			this.scene = new graphics_scene();
-			
 			this.chat_client = new chat_socket_stream();
 			this.chat_client.add_event_handler(new keep_alive_event(), this.on_keep_alive);
 			this.chat_client.add_event_handler(new update_player_position_event(), this.on_update_player_position);
@@ -88,23 +86,12 @@
 		
 		public function on_create_player(event:create_player_event):void
 		{
-			debug.log("[engine:chat:event] Creating player...");
-			
-			/*var player:game_player = event.player;
-
-			player.id = event.player_id;
-			player.name = event.player_name;
-			player.position.x = event.x_position;
-			player.position.y = event.y_position;*/
+			debug.log("[engine:chat:event] Creating player... (#" + event.player.id + ")");
 			
 			if(event.control)
 				this.player = event.player;
 			
-			this.world.player_list[event.player.id] = event.player;
-			
-			this.scene.add_model(event.player.model);
-			
-			//this.scene.remove_model(player.model);
+			this.world.add_player(event.player);
 			
 		}
 		
@@ -115,14 +102,13 @@
 		
 		public function on_update_player_position(event:update_player_position_event):void
 		{
-			var player:game_player = this.world.player_list[event.player_id];
+			var player:game_player = this.world.get_player(event.player_id);
 			
 			if(player != null)
 			{
-				debug.log("[engine:chat:event] Updating player position.");
+				debug.log("[engine:chat:event] Updating player position. (#" + player.id + ")");
 
-				player.position.x = event.position.x;
-				player.position.y = event.position.y;
+				player.position = event.position;
 			}
 			else
 			{
@@ -139,46 +125,47 @@
 		{
 			var key_state:keyboard_state = core_application.get_keyboard().get_state();
 
-			var message:update_player_direction_event = new update_player_direction_event();
+			if(this.player != null)
+			{
+				this.player.rotation.x = 0;
+				this.player.rotation.y = 0;
+	
+				if(key_state.is_key_down(key_code.w))
+				{
+					this.player.rotation.y = 1;
+				}
+				else if(key_state.is_key_down(key_code.d))
+				{
+					this.player.rotation.x = 1;
+				}
+				else if(key_state.is_key_down(key_code.s))
+				{
+					this.player.rotation.y = -1;
+				}
+				else if(key_state.is_key_down(key_code.a))
+				{
+					this.player.rotation.x = -1;
+				}
 
-/* todo(daemn) fix
-			if(key_state.is_key_down(key_code.w))
-			{
-				message.direction_id = update_player_direction_event.direction_up;
+				var message:update_player_rotation_event = new update_player_rotation_event();
+				
+				message.rotation = this.player.rotation;
+	
+				this.chat_client.send_message(message, 
+				function():void
+				{
+					//debug.log("[engine:chat] Successfully sent message.");
+				},
+				function():void
+				{
+					//debug.log("[engine:chat] Failed to send message.");
+				});
 			}
-			else if(key_state.is_key_down(key_code.d))
-			{
-				message.direction_id = update_player_direction_event.direction_right;
-			}
-			else if(key_state.is_key_down(key_code.s))
-			{
-				message.direction_id = update_player_direction_event.direction_down;
-			}
-			else if(key_state.is_key_down(key_code.a))
-			{
-				message.direction_id = update_player_direction_event.direction_left;
-			}
-			else
-			{
-				message.direction_id = update_player_direction_event.direction_none;
-			}*/
-
-			this.chat_client.send_message(message, 
-			function():void
-			{
-				debug.log("[engine:chat] Successfully sent message.");
-			},
-			function():void
-			{
-				debug.log("[engine:chat] Failed to send message.");
-			});
 		}
 		
 		public function connect_successful_handler():void
 		{
 			debug.log("[engine:chat] Successfully connected.");
-			
-			this.world = new game_world();
 			
 			var message:login_event = new login_event();
 			
@@ -194,22 +181,6 @@
 			{
 				debug.log("[engine:chat] Failed to log in.");
 			});
-
-
-/*
-			var msg:String = "";
-			
-			this.chat_client.send(chat_socket_stream.enter_chat_response + msg.length + msg, 
-			function() 
-			{
-				self.connected = true;
-			},
-			function()
-			{
-				self.connected = false;
-			});*/
-
-
 		}
 		
 		public function connect_failure_handler():void
@@ -226,22 +197,22 @@
 				this.update_keyboard();
 			}
 			
+			if(this.player != null)
+				trace(this.player.position.x + "/" + this.player.position.y);
+			
 			this.world.update(time);
-			this.scene.update(time);
 		}
 		
 		public function draw(device:graphics_device):void
 		{
-			this.scene.draw(device);
+			this.world.draw(device);
 		}
-		
-		private var scene:graphics_scene;
 		
 		private var chat_client:chat_socket_stream;
 		//public var realm_client:network_client;
 		//public var game_client:network_client;
 		
-		private var player:game_player;
+		private var player:game_player = null;
 		private var world:game_world;
 	}
 }

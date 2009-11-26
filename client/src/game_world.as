@@ -1,15 +1,31 @@
 ﻿class game_world
 {
 	public var player_list:Array;
+	public var scene:graphics_scene;
 	
 	public function game_world()
 	{
 		this.player_list = new Array();
+		this.scene = new graphics_scene();
+		
+	}
+	
+	public function get_player(id:int):game_player
+	{
+		return this.player_list[id];
+	}
+	
+	public function add_player(player:game_player):void
+	{
+		this.player_list[player.id] = player;
+			
+		this.scene.add_model(player.model);
 	}
 	
 	public function update(time:core_timestamp):void
 	{
-		
+		for each(var player:game_player in this.player_list)
+			player.update(time);
 		
 /*
 		this.mc = new MovieClip();
@@ -34,5 +50,10 @@
 		this.mc.addChild(bm);*/
 		
 		
+	}
+	
+	public function draw(device:graphics_device):void
+	{
+		this.scene.draw(device);
 	}
 }

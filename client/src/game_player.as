@@ -6,4 +6,5 @@ class game_player extends game_npc
 	{
 		
 	}
+
 }

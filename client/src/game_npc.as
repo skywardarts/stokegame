@@ -4,8 +4,6 @@ class game_npc extends game_object
 {
 	public var id:int;
 	public var name:String;
-	public var position:math_vector2;
-	public var rotation:math_vector2;
 	public var model:graphics_model_2d;
 
 	public function game_npc()
@@ -13,27 +11,64 @@ class game_npc extends game_object
 		this.id = 0;
 		this.name = "Undefined";
 		
+		this.model = new graphics_model_2d();
 	}
 	
-	public function update():void
+	public function update(time:core_timestamp):void
 	{
-		//if(this.position.changed)
-		//this.mc.x = this.position.x;
-		//this.mc.y = this.position.y * -1;
-		
-		//if(this.rotation.changed)
-	}
-	/*
-	public function draw(device:graphics_device):void
-	{
-		if(this.changed)
-		{
-			var bm:Bitmap = new Bitmap(new avatar(0, 0)); 
-			bm.x = this.position.x; bm.y = this.position.y * -1;
-			bm.width = 34; bm.height = 34;
+		//if(this.changed)
+		//{
+			var step:Number = time.elapsed_real_time / 10;
 			
-			device.addChild(bm);
-		}
-	}*/
+			if(this.model.rotation.x == 1)
+			{
+				this.model.position.x += step;
+			}
+			else if(this.model.rotation.x == -1)
+			{
+				this.model.position.x -= step;
+			}
+			else if(this.model.rotation.y == 1)
+			{
+				this.model.position.y += step;
+			}
+			else if(this.model.rotation.y == -1)
+			{
+				this.model.position.y -= step;
+			}
+			
+			//this.changed = false;
+		//}
+	}
+	
+	public function get changed():Boolean
+	{
+		if(this.model.changed)
+			return true;
+			
+		return false;
+	}
+	
+	public function set changed(changed_:Boolean):void
+	{
+		this.model.changed = changed_;
+	}
+
+	public function get position():math_vector2
+	{
+		return this.model.position;
+	}
+	
+	public function set position(position_:math_vector2):void
+	{
+		this.model.position = position_;
+	}
+	
+	public function get rotation():math_vector2
+	{
+		return this.model.rotation;
+	}
+	
+	
 	
 }

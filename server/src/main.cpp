@@ -49,6 +49,23 @@ namespace nextgen
             NEXTGEN_SHARED_DATA(game_player, variables);
         };
 
+struct testing_message_base
+{
+    int id;
+    int length;
+};
+
+struct testing_message
+{
+    int player_id;
+    int name_length;
+    int position_x;
+    int position_y;
+    int rotation_x;
+    int rotation_y;
+    bool something;
+};
+
         class game_world
         {
             public: typedef network::service network_service_type;
@@ -77,14 +94,17 @@ namespace nextgen
                     for(player_list_type::iterator i = self->player_list.begin(), l = self->player_list.end(); i != l; ++i)
                     {
                         game_player old_player = (*i);
-
+/*
                         // show the new player for old players
                         {
                             network::ngp_message message;
 
                             std::stringstream content;
 
-                            content << new_player->id << new_player->name.length() << new_player->name << new_player->position->x << new_player->position->y << new_player->direction->x << new_player->direction->y << false;
+                            testing_message t = {new_player->id, new_player->name.length(), new_player->name.c_str(), new_player->position->x, new_player->position->y, new_player->direction->x, new_player->direction->y, false};
+
+
+                            content << t;//new_player->id << new_player->name.length() << new_player->name << new_player->position->x << new_player->position->y << new_player->direction->x << new_player->direction->y << false;
 
                             std::stringstream content2;
 
@@ -114,7 +134,7 @@ namespace nextgen
                             std::cout << "sending: " << message->content << std::endl;
 
                             new_player->client.send(message);
-                        }
+                        }*/
                     }
 
                     self->player_list.push_back(new_player);
@@ -123,17 +143,15 @@ namespace nextgen
                     {
                         network::ngp_message message;
 
-                        std::stringstream content;
+                        //testing_message t = {new_player->id, new_player->name.length(), new_player->name.c_str(), new_player->position->x, new_player->position->y, new_player->direction->x, new_player->direction->y, true};
+std::ostream data_stream(&message->stream.get_buffer());
 
-                        content << new_player->id << new_player->name.length() << new_player->name << new_player->position->x << new_player->position->y << new_player->direction->x << new_player->direction->y << true;
 
-                        std::stringstream content2;
+                        data_stream << 5 << sizeof(testing_message) + new_player->name.length() << new_player->id << new_player->name.length() << new_player->name.c_str() << new_player->position->x << new_player->position->y << new_player->direction->x << new_player->direction->y << true;
 
-                        content2 << 5 << content.str().length() << content.str();
+std::cout << sizeof(testing_message) + new_player->name.length();
 
-                        message->content = content2.str();
-
-                        std::cout << "sending: " << message->content << std::endl;
+                        std::cout << "sending: " << &message->stream.get_buffer() << std::endl;
 
                         new_player->client.send(message);
                     }
