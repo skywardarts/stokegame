@@ -161,7 +161,7 @@ class realm_server(object):
 			self.write.remove(sock)
 			self.read.remove(sock)
 
-			time.sleep(0.01)
+			time.sleep(0.05)
 	
 		for sock in r:
 			if sock == self.server:
@@ -249,14 +249,14 @@ class realm_server(object):
 					del self.player_list[sock]
 					self.read.remove(sock)
 
-				time.sleep(0.01)
+				time.sleep(0.05)
 	
 	
 		for sock in w:
 			self.read.append(sock)
 			self.write.remove(sock)
 
-			time.sleep(0.01)
+			time.sleep(0.05)
 			
 		timer = int(time.time() * 100)
 
@@ -301,7 +301,7 @@ class realm_server(object):
 				
 				p.position.changed = False
 
-			time.sleep(0.01)
+			time.sleep(0.05)
 
 class chat_server(object):
 	def __init__(self, port):

@@ -197,8 +197,8 @@
 				this.update_keyboard();
 			}
 			
-			if(this.player != null)
-				trace(this.player.position.x + "/" + this.player.position.y);
+			//if(this.player != null)
+				//trace(this.player.position.x + "/" + this.player.position.y);
 			
 			this.world.update(time);
 		}

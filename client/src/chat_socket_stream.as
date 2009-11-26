@@ -215,15 +215,11 @@ class create_player_event implements socket_event
 	//public static const id:int = 3;
 	
 	public var player:game_player;
-	public var position:math_vector2; 
-	public var rotation:math_vector2;
 	public var control:Boolean;
 	
 	public function create_player_event()
 	{
 		this.player = new game_player();
-		this.position = new math_vector2();
-		this.rotation = new math_vector2();
 		
 	}
 	
@@ -234,10 +230,10 @@ class create_player_event implements socket_event
 		ba.writeInt(this.player.id);
 		ba.writeInt(this.player.name.length);
 		ba.writeUTFBytes(this.player.name);
-		ba.writeInt(this.position.x);
-		ba.writeInt(this.position.y);
-		ba.writeInt(this.rotation.x);
-		ba.writeInt(this.rotation.y);
+		ba.writeInt(this.player.position.x);
+		ba.writeInt(this.player.position.y);
+		ba.writeInt(this.player.rotation.x);
+		ba.writeInt(this.player.rotation.y);
 		ba.writeBoolean(this.control);
 		
 		return ba;
@@ -250,10 +246,10 @@ class create_player_event implements socket_event
 		this.player.id = ba.readInt();
 		var player_name_length:int = ba.readInt();
 		this.player.name = ba.readUTFBytes(player_name_length);
-		this.position.x = ba.readInt();
-		this.position.y = ba.readInt();
-		this.rotation.x = ba.readInt();
-		this.rotation.y = ba.readInt();
+		this.player.position.x = ba.readInt();
+		this.player.position.y = ba.readInt();
+		this.player.rotation.x = ba.readInt();
+		this.player.rotation.y = ba.readInt();
 		this.control = ba.readBoolean();
 		
 		//return event;
