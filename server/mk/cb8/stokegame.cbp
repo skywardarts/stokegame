@@ -15,6 +15,9 @@
 					<Add option="-O3" />
 					<Add option="-g" />
 				</Compiler>
+				<Linker>
+					<Add library="libboost_iostreams.a" />
+				</Linker>
 			</Target>
 			<Target title="Linux Release">
 				<Option output="../../bin/linux_x86" prefix_auto="1" extension_auto="1" />
@@ -44,6 +47,7 @@
 			<Add library="libboost_regex.a" />
 			<Add library="libboost_thread.a" />
 			<Add library="libcurl.a" />
+			<Add library="libboost_iostreams.a" />
 		</Linker>
 		<Unit filename="../../src/main.cpp" />
 		<Unit filename="../../src/main.h" />

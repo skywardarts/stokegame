@@ -2,9 +2,9 @@
 <CodeBlocks_layout_file>
 	<ActiveTarget name="Linux Debug" />
 	<File name="../../src/main.cpp" open="1" top="0" tabpos="2">
-		<Cursor position="5444" topLine="163" />
+		<Cursor position="6819" topLine="216" />
 	</File>
-	<File name="../../src/main.h" open="1" top="0" tabpos="1">
-		<Cursor position="72775" topLine="1848" />
+	<File name="../../src/main.h" open="1" top="1" tabpos="1">
+		<Cursor position="75771" topLine="1947" />
 	</File>
 </CodeBlocks_layout_file>

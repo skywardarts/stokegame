@@ -18,6 +18,7 @@
 			this.chat_client.add_event_handler(new update_player_position_event(), this.on_update_player_position);
 			this.chat_client.add_event_handler(new create_player_event(), this.on_create_player);
 			this.chat_client.add_event_handler(new update_player_event(), this.on_update_player);
+			this.chat_client.add_event_handler(new remove_player_event(), this.on_remove_player);
 			
 			//this.realm_client = new flashx_network_client(new engine_protocol_realm_socket());
 			//this.game_client = new flashx_network_client(new engine_protocol_game_socket());
@@ -95,6 +96,14 @@
 			
 		}
 		
+		public function on_remove_player(event:remove_player_event):void
+		{
+			debug.log("[engine:chat:event] Removing player... (#" + event.player.id + ")");
+			
+			this.world.remove_player(event.player);
+			
+		}
+		
 		public function on_update_player(event:update_player_event):void
 		{
 			debug.log("[engine:chat:event] Updating player...");
@@ -108,7 +117,8 @@
 			{
 				debug.log("[engine:chat:event] Updating player position. (#" + player.id + ")");
 
-				player.position = event.position;
+				player.model.position.x = event.position.x;
+				player.model.position.y = event.position.y;
 			}
 			else
 			{

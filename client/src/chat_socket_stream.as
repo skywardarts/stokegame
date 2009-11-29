@@ -95,7 +95,136 @@ class login_event implements socket_event
 	}
 }
 
+class create_player_event implements socket_event
+{
+	public var player:game_player;
+	public var control:Boolean;
+	
+	public function create_player_event()
+	{
+		this.player = new game_player();
+		
+	}
+	
+	public function pack():ByteArray
+	{
+		var ba:ByteArray = new ByteArray();
+		
+		ba.writeInt(this.player.id);
+		ba.writeInt(this.player.name.length);
+		ba.writeUTFBytes(this.player.name);
+		ba.writeInt(this.player.position.x);
+		ba.writeInt(this.player.position.y);
+		ba.writeInt(this.player.rotation.x);
+		ba.writeInt(this.player.rotation.y);
+		ba.writeBoolean(this.control);
+		
+		return ba;
+	}
+	
+	public function unpack(ba:ByteArray):void
+	{
+		//var event:socket_event = new update_player_position_event();
+trace("unpacking create player event");
 
+		this.player.id = ba.readInt();
+		trace(this.player.id);
+		var player_name_length:int = ba.readInt();
+		trace(player_name_length);
+		this.player.name = ba.readUTFBytes(player_name_length);
+		trace(this.player.name);
+		this.player.position.x = ba.readInt();
+		trace(this.player.position.x);
+		this.player.position.y = ba.readInt();
+		trace(this.player.position.y);
+		this.player.rotation.x = ba.readInt();
+		trace(this.player.rotation.x);
+		this.player.rotation.y = ba.readInt();
+		trace(this.player.rotation.y);
+		this.control = ba.readBoolean();
+		
+		//return event;
+	}
+	
+	public function clone():socket_event
+	{
+		return new create_player_event();
+	}
+
+	public function get id():int
+	{
+		return 3;
+	}
+}
+
+
+class update_player_event implements socket_event
+{
+	public var player_id:int;
+	public var data:ByteArray;
+	
+	public function pack():ByteArray
+	{
+		var ba:ByteArray = new ByteArray();
+		
+		ba.writeInt(this.player_id);
+		
+		return ba;
+	}
+	
+	public function unpack(ba:ByteArray):void
+	{
+		this.player_id = ba.readInt();
+		
+		ba.readBytes(this.data, ba.position);
+	}
+	
+	public function clone():socket_event
+	{
+		return this;
+	}
+	
+	public function get id():int
+	{
+		return 4;
+	}
+}
+
+
+class remove_player_event implements socket_event
+{
+	public var player:game_player;
+	public var data:ByteArray;
+	
+	public function remove_player_event()
+	{
+		this.player = new game_player();
+	}
+	
+	public function pack():ByteArray
+	{
+		var ba:ByteArray = new ByteArray();
+		
+		ba.writeInt(this.player.id);
+		
+		return ba;
+	}
+	
+	public function unpack(ba:ByteArray):void
+	{
+		this.player.id = ba.readInt();
+	}
+	
+	public function clone():socket_event
+	{
+		return this;
+	}
+	
+	public function get id():int
+	{
+		return 5;
+	}
+}
 
 class update_player_position_event implements socket_event
 {
@@ -136,9 +265,10 @@ class update_player_position_event implements socket_event
 
 	public function get id():int
 	{
-		return 3;
+		return 41;
 	}
 }
+
 
 class update_player_rotation_event implements socket_event
 {
@@ -152,7 +282,7 @@ class update_player_rotation_event implements socket_event
 	public function pack():ByteArray
 	{
 		var ba:ByteArray = new ByteArray();
-
+trace("rot: " + this.rotation.x + " / " + this.rotation.y);
 		ba.writeInt(this.rotation.x);
 		ba.writeInt(this.rotation.y);
 		//ba.writeInt(math_helper.random_int(0, 9999));
@@ -172,99 +302,11 @@ class update_player_rotation_event implements socket_event
 	
 	public function get id():int
 	{
-		return 7;
+		return 42;
 	}
 }
 
 
-class update_player_event implements socket_event
-{
-	public var player_id:int;
-	public var data:ByteArray;
-	
-	public function pack():ByteArray
-	{
-		var ba:ByteArray = new ByteArray();
-		
-		ba.writeInt(this.player_id);
-		
-		return ba;
-	}
-	
-	public function unpack(ba:ByteArray):void
-	{
-		this.player_id = ba.readInt();
-		
-		ba.readBytes(this.data, ba.position);
-	}
-	
-	public function clone():socket_event
-	{
-		return this;
-	}
-	
-	public function get id():int
-	{
-		return 6;
-	}
-}
-
-
-class create_player_event implements socket_event
-{
-	//public static const id:int = 3;
-	
-	public var player:game_player;
-	public var control:Boolean;
-	
-	public function create_player_event()
-	{
-		this.player = new game_player();
-		
-	}
-	
-	public function pack():ByteArray
-	{
-		var ba:ByteArray = new ByteArray();
-		
-		ba.writeInt(this.player.id);
-		ba.writeInt(this.player.name.length);
-		ba.writeUTFBytes(this.player.name);
-		ba.writeInt(this.player.position.x);
-		ba.writeInt(this.player.position.y);
-		ba.writeInt(this.player.rotation.x);
-		ba.writeInt(this.player.rotation.y);
-		ba.writeBoolean(this.control);
-		
-		return ba;
-	}
-	
-	public function unpack(ba:ByteArray):void
-	{
-		//var event:socket_event = new update_player_position_event();
-		ba.position = 0;
-		this.player.id = ba.readInt();
-		var player_name_length:int = ba.readInt();
-		this.player.name = ba.readUTFBytes(player_name_length);
-		this.player.position.x = ba.readInt();
-		this.player.position.y = ba.readInt();
-		this.player.rotation.x = ba.readInt();
-		this.player.rotation.y = ba.readInt();
-		this.control = ba.readBoolean();
-		
-		//return event;
-	}
-	
-	public function clone():socket_event
-	{
-		return new create_player_event();
-	}
-
-	public function get id():int
-	{
-		return 5;
-	}
-}
 
 class chat_socket_stream
 {
@@ -300,6 +342,7 @@ class chat_socket_stream
 		this.add_message_handler(new keep_alive_event());
 		this.add_message_handler(new login_event());
 		this.add_message_handler(new create_player_event());
+		this.add_message_handler(new remove_player_event());
 		this.add_message_handler(new update_player_position_event());
 		this.add_message_handler(new update_player_rotation_event());
 	}
@@ -330,7 +373,9 @@ class chat_socket_stream
 					var message_length:int = self.data.readInt();
 					var message_data:ByteArray = new ByteArray();
 					
-					trace("Incoming packet, id: " + message_id);
+					trace("Incoming event #" + message_id);
+					trace("message_length: " + message_length);
+					trace("bytes_avail: " + self.data.bytesAvailable);
 
 					if(self.data.bytesAvailable >= message_length)
 					{
@@ -340,10 +385,15 @@ class chat_socket_stream
 						
 						var event:socket_event = self.message_handler_list[message_id].clone();
 						
+						message_data.position = 0;
+						
 						event.unpack(message_data);
 						
 						if(self.event_handler_list[message_id] != null)
+						{
+							trace("Firing off event #" + message_id);
 							self.event_handler_list[message_id](event);
+						}
 					}
 					else
 					{

@@ -16,6 +16,7 @@ class Log:
 		#	print "Unable to create log."
 
 	def __del__(self):
+		""""""
 		#if self.log:
 		#	self.log.close()
 	

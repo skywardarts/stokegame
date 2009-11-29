@@ -22,6 +22,15 @@
 		this.scene.add_model(player.model);
 	}
 	
+	public function remove_player(player:game_player):void
+	{
+		player = this.player_list[player.id];
+		
+		this.scene.remove_model(player.model);
+		
+		delete this.player_list[player.id];
+	}
+	
 	public function update(time:core_timestamp):void
 	{
 		for each(var player:game_player in this.player_list)

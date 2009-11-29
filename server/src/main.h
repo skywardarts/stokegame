@@ -1,5 +1,3 @@
-
-
 #include <cstddef>
 #include <cstdio>
 #include <cmath>
@@ -19,8 +17,9 @@
 #include <set>
 #include <list>
 #include <queue>
+#include <algorithm>         // copy, min.
+#include <cassert>
 #include <deque>
-#include <algorithm>
 
 #include <stdlib.h>
 #include <string.h>
@@ -30,10 +29,17 @@
 //#include <signal.h>
 //#include <typeinfo.h>
 #include <sys/types.h>
+#include <stdio.h>
 
+#include <asio.hpp>
+#include <asio/ssl.hpp>
+
+#include <boost/iostreams/stream.hpp>
+#include <boost/config.hpp>  // BOOST_NO_STDC_NAMESPACE.
+#include <boost/iostreams/categories.hpp>
+#include <boost/iostreams/detail/ios.hpp>  // failure.
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
-
 #include <boost/shared_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/ref.hpp>
@@ -56,8 +62,7 @@
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include <asio.hpp>
-#include <asio/ssl.hpp>
+
 
 
 #define NEXTGEN_PLATFORM_DOS 0
@@ -101,7 +106,7 @@
     public: bool operator==(int t) const { if(t == 0) return this->ng_data == 0; else return 0; } \
     public: bool operator!=(this_type const& t) const { return !this->operator==(t); } \
     public: bool operator!=(int t) const { return !this->operator==(t); } \
-    public: boost::shared_ptr<data_type> const& operator->() const { return this->ng_data; } \
+    public: boost::shared_ptr<data_type> const& operator->() const { return this->ng_data; }
 
 
 bool DEBUG_MESSAGES = 1;
@@ -146,7 +151,7 @@ namespace nextgen
     typedef boost::int32_t int32_t;
     typedef boost::int32_t int32_t;
     typedef boost::uint8_t uint8_t;
-    typedef boost::uint8_t byte;
+    typedef boost::uint8_t byte; //typedef unsigned char byte;
     typedef boost::uint16_t uint16_t;
     typedef boost::uint32_t uint32_t;
     typedef boost::uint64_t uint64_t;
@@ -199,6 +204,204 @@ namespace nextgen
     	typedef int startup_information;
     	typedef int process_information;
     #endif
+
+    class byte_array
+    {
+        public: void reverse_bytes(byte* input, byte* output, size_t length)
+        {
+            for(size_t i = 0; i < length; ++i)
+                output[i] = input[length - i - 1];
+        }
+
+        public: template<typename element_type> void read(element_type&& output, size_t length = 0)
+        {
+            auto self = *this;
+
+            std::istream data_stream(&self->data);
+
+            length = length > 0 ? length : sizeof(element_type);
+std::cout << length << std::endl;
+            memset((byte*)&output, 0, length);
+
+            byte* input = (byte*)&output;
+
+            if(length > self.length())
+                length = self.length();
+std::cout << length << std::endl;
+            //bool little_endian = true;
+
+            if(self->little_endian)
+                for(size_t i = length; i > 0; --i)
+                    data_stream >> input[i-1];
+            else
+                for(size_t i = 0; i < length; ++i)
+                    data_stream >> input[i];
+        }
+
+        public: template<typename element_type> void write(element_type&);
+        public: template<typename element_type> void write(element_type&&, size_t);
+
+        public: template<typename element_type> byte_array operator>>(element_type&& output)
+        {
+            auto self = *this;
+
+            self.read(output);
+
+            return *this;
+        }
+
+        public: template<typename element_type> byte_array operator<<(element_type&& input)
+        {
+            auto self = *this;
+
+            self.write(input);
+
+            return *this;
+        }
+
+        public: size_t available()
+        {
+            auto self = *this;
+
+            return self->data.size();
+        }
+
+        public: size_t size()
+        {
+            auto self = *this;
+
+            return self->data.size();
+        }
+
+        public: size_t length()
+        {
+            auto self = *this;
+
+            return self->data.size();
+        }
+
+        public: bool is_little_endian()
+        {
+            int i = 1;
+
+            char *p = (char*)&i;
+
+            if (p[0] == 1)
+                return true;
+            else
+                return false;
+        }
+
+        public: std::string debug()
+        {
+            auto self = *this;
+
+            std::string output;
+/*
+            char ch[3];
+
+            for(int i = 0, l = self->data.size(); i < l; ++i)
+            {
+                sprintf(ch, "\\x%02x", self->data[i]);
+
+                output += ch;
+            }*/
+
+            return output;
+        }
+
+        public: asio::streambuf& get_buffer()
+        {
+            auto self = *this;
+
+            return self->data;
+        }
+
+        private: struct variables
+        {
+            variables()
+            {
+
+            }
+
+            variables(byte_array& ba, size_t length)
+            {
+                // todo(daemn) fix this
+                std::ostream ostream(&this->data);
+
+                ostream << &ba->data;
+            }
+
+            ~variables()
+            {
+
+            }
+
+            bool little_endian;
+            asio::streambuf data;
+        };
+
+        NEXTGEN_SHARED_DATA(byte_array, variables,
+        {
+            auto self = *this;
+
+            self->little_endian = self.is_little_endian();
+        });
+    };
+
+    template<typename element_type>
+    inline void byte_array::write(element_type&& input, size_t length)
+    {
+        auto self = *this;
+
+        std::ostream data_stream(&self->data);
+
+        length = length > 0 ? length : sizeof(element_type);
+std::cout << "A" << length << std::endl;
+        byte* output = (byte*)&input;
+
+        //bool little_endian = true;
+
+        if(self->little_endian)
+            for(size_t i = length; i > 0; --i)
+                data_stream << output[i-1];
+        else
+            for(size_t i = 0; i < length; ++i)
+                data_stream << output[i];
+    }
+
+
+    template<typename element_type>
+    inline void byte_array::write(element_type& input)
+    {
+        auto self = *this;
+std::cout << "Z" << std::endl;
+        self.write(input, 0);
+    }
+
+
+    template<>
+    inline void byte_array::write(string& input)
+    {
+        auto self = *this;
+
+        std::ostream data_stream(&self->data);
+
+        size_t length = input.length();
+
+        for(size_t i = 0; i < length; ++i)
+            data_stream << input[i];
+    }
+
+    template<>
+    inline void byte_array::write(byte_array& input)
+    {
+        auto self = *this;
+
+        std::ostream ostream(&self->data);
+
+        ostream << &input->data;
+    }
 
     template<typename element_type>
     class singleton
@@ -666,7 +869,6 @@ namespace nextgen
                     {
                         public: typedef layer<network_layer_type> this_type;
                         public: typedef service service_type;
-                        public: typedef stream stream_type;
                         public: typedef string host_type;
                         public: typedef uint32_t port_type;
                         public: typedef uint32_t timeout_type;
@@ -866,11 +1068,9 @@ namespace nextgen
                             self->timer_.cancel();
                         }
 
-                        public: virtual void send(stream_type stream2, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        public: template<typename stream_type> void send(stream_type& stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
                         {
-                            auto self2 = *this;
-                            auto self = self2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
-                            auto stream = stream2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
+                            auto self = *this;
 
                             if(successful_handler == 0)
                                 successful_handler = self->send_successful_event;
@@ -887,7 +1087,7 @@ namespace nextgen
                                 self->timer_.async_wait(self->cancel_handler_);
                             }
 
-                            asio::async_write(self->socket_, stream.get_buffer(),
+                            asio::async_write(self->socket_, stream,
                             [=](asio::error_code const& error, size_t& total)
                             {
                                 if(self->timeout_ > 0)
@@ -907,13 +1107,6 @@ namespace nextgen
                                 {
                                     successful_handler();
                                 }
-                                /*else if(error == asio::error::eof)
-                                {
-                                    if(DEBUG_MESSAGES4)
-                                        std::cout << "<socket::write handler> eof" << std::endl;
-
-                                    successful_handler();
-                                }*/
                                 else
                                 {
                                     if(DEBUG_MESSAGES4)
@@ -926,16 +1119,7 @@ namespace nextgen
                             });
                         }
 
-                        public: virtual void receive(receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
-                        {
-                            auto self = *this;
-
-                            stream_type stream;
-
-                            self.receive("#all#", stream, successful_handler, failure_handler);
-                        }
-
-                        public: virtual void receive(std::string const& delimiter, stream_type stream, receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
+                        public: template<typename stream_type> void receive(std::string const& delimiter, stream_type& stream, receive_successful_event_type successful_handler = 0, receive_failure_event_type failure_handler = 0) const
                         {
                             auto self2 = *this;
                             auto self = self2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
@@ -949,35 +1133,41 @@ namespace nextgen
                             if(DEBUG_MESSAGES)
                                 std::cout << "<socket::receive> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
-                            auto on_read = [=](asio::error_code const& error, uint32_t total)
+
+
+                            auto on_read = [=, &stream](asio::error_code const& error, uint32_t total)
                             {
                                 if(DEBUG_MESSAGES)
                                     std::cout << "<socket::receive handler> (" << self->network_layer_.get_host() << ":" << self->network_layer_.get_port() << ")" << std::endl;
 
                                 if(self->timeout_ > 0)
                                     self.cancel_timer();
-
+std::cout << "4" << std::endl;
                                 if(!self.is_connected())
                                 {
                                     failure_handler();
 
                                     return;
                                 }
-
+std::cout << "3" << std::endl;
                                 if(!error)
                                 {
-                                    if(self.get_socket().available())
+                                    std::cout << "7" << std::endl;
+                                    if(self.get_socket().available() > 0)
                                     {
+                                        std::cout << "6" << std::endl;
                                         if(self->timeout_ > 0)
                                         {
+                                            std::cout << "8" << std::endl;
                                             self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
                                             self->timer_.async_wait(self->cancel_handler_);
                                         }
-
-                                        self.receive(delimiter, stream, successful_handler, failure_handler);
+std::cout << "1" << std::endl;
+                                        self.receive(delimiter, stream, successful_handler, failure_handler);std::cout << "2" << std::endl;
                                     }
                                     else
                                     {
+                                        std::cout << "5" << std::endl;
                                         successful_handler();
                                     }
                                 }
@@ -992,32 +1182,25 @@ namespace nextgen
                                 }
                             };
 
+                            if(self->timeout_ > 0)
+                            {
+                                self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
+                                self->timer_.async_wait(self->cancel_handler_);
+                            }
+
                             if(delimiter == "#all#")
                             {
-                                if(self->timeout_ > 0)
-                                {
-                                    self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
-                                    self->timer_.async_wait(self->cancel_handler_);
-                                }
-
-                                asio::async_read(self.get_socket(), stream.get_buffer(), asio::transfer_at_least(1), on_read);
+                                asio::async_read(self.get_socket(), stream, asio::transfer_at_least(1), on_read);
                             }
                             else
                             {
-                                if(self->timeout_ > 0)
-                                {
-                                    self->timer_.expires_from_now(boost::posix_time::seconds(self->timeout_));
-                                    self->timer_.async_wait(self->cancel_handler_);
-                                }
-
-                                asio::async_read_until(self.get_socket(), stream.get_buffer(), delimiter, on_read);
+                                asio::async_read_until(self.get_socket(), stream, delimiter, on_read);
                             }
                         }
 
                         public: virtual void accept(port_type port_, accept_successful_event_type successful_handler = 0, accept_failure_event_type failure_handler = 0) const
                         {
-                            auto self2 = *this;
-                            auto self = self2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
+                            auto self = *this;
 
                             if(DEBUG_MESSAGES)
                                 std::cout << "[nextgen:network:ip:transport:tcp:socket:accept] " << std::endl;
@@ -1124,7 +1307,6 @@ namespace nextgen
                     public: typedef timer timer_type;
                     public: typedef string host_type;
                     public: typedef uint32_t port_type;
-                    public: typedef stream stream_type;
 
                     public: typedef std::function<void()> base_event_type;
                     public: typedef base_event_type send_successful_event_type;
@@ -1161,14 +1343,14 @@ namespace nextgen
                 {
                     class message : public message_base
                     {
-                        public: stream_type& get_stream() const
+                        public: stream_type get_stream() const
                         {
                             auto self = *this;
 
                             return self->stream;
                         }
 
-                        public: void parse_output() const
+                        public: void pack() const
                         {
                             auto self = *this;
 
@@ -1259,7 +1441,7 @@ namespace nextgen
                             }
                         }
 
-                        public: void parse_input() const
+                        public: void unpack() const
                         {
                             auto self = *this;
 
@@ -1398,12 +1580,12 @@ namespace nextgen
                         {
                             auto self = *this;
 
-                            request_.parse_output();
+                            request_.pack();
 
-                            self.send(request_.get_stream(), successful_handler, failure_handler);
+                            self.send(request_.get_stream().get_buffer(), successful_handler, failure_handler);
                         }
 
-                        public: virtual void send(stream_type stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        public: template<typename stream_type> void send(stream_type& stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
 
@@ -1434,13 +1616,12 @@ namespace nextgen
                             if(failure_handler == 0)
                                 failure_handler = self->receive_failure_event;
 
-                            message_type response2;
-                            auto response = response2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
+                            message_type response;
 
-                            self->transport_layer_.receive("#all#", response.get_stream(),
+                            self->transport_layer_.receive("#all#", response.get_stream().get_buffer(),
                             [=]()
                             {
-                                response.parse_input();
+                                response.unpack();
 
                                 successful_handler(response);
                             },
@@ -1502,23 +1683,25 @@ namespace nextgen
                 {
                     class message : public message_base
                     {
-                        public: stream_type& get_stream() const
+                        typedef string data_type;
+
+                        public: stream_type get_stream() const
                         {
                             auto self = *this;
 
                             return self->stream;
                         }
 
-                        public: void parse_output() const
+                        public: void pack() const
                         {
                             auto self = *this;
 
                             std::ostream data_stream(&self->stream.get_buffer());
 
-                            data_stream << self->content;
+                            data_stream << self->data;
                         }
 
-                        public: void parse_input() const
+                        public: void unpack() const
                         {
                             auto self = *this;
 
@@ -1526,7 +1709,7 @@ namespace nextgen
                             {
                                 std::istream data_stream(&self->stream.get_buffer());
 
-                                self->content = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
+                                self->data = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
                             }
 
                         }
@@ -1543,7 +1726,7 @@ namespace nextgen
 
                             }
 
-                            content_type content;
+                            data_type data;
                             stream_type stream;
                         };
 
@@ -1589,12 +1772,12 @@ namespace nextgen
                         {
                             auto self = *this;
 
-                            request_.parse_output();
+                            request_.pack();
 
-                            self.send(request_.get_stream(), successful_handler, failure_handler);
+                            self.send(request_.get_stream().get_buffer(), successful_handler, failure_handler);
                         }
 
-                        public: virtual void send(stream_type stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        public: template<typename stream_type> void send(stream_type& stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
 
@@ -1625,13 +1808,12 @@ namespace nextgen
                             if(failure_handler == 0)
                                 failure_handler = self->receive_failure_event;
 
-                            message_type response2;
-                            auto response = response2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
+                            message_type response;
 
-                            self->transport_layer_.receive("#all#", response.get_stream(),
+                            self->transport_layer_.receive("#all#", response.get_stream().get_buffer(),
                             [=]()
                             {
-                                response.parse_input();
+                                response.unpack();
 
                                 successful_handler(response);
                             },
@@ -1693,34 +1875,56 @@ namespace nextgen
                 {
                     class message : public message_base
                     {
-                        public: stream_type& get_stream() const
+                        public: void pack() const
                         {
                             auto self = *this;
 
-                            return self->stream;
-                        }
-
-                        public: void parse_output() const
-                        {
-                            auto self = *this;
-
-                            std::ostream data_stream(&self->stream.get_buffer());
+                           // std::ostream data_stream(&self->stream.get_buffer());
 
                             //data_stream << self->content;
+
+                            std::cout << "packing" << std::endl;
+                            std::cout << self->data.length() << std::endl;
+
+                            self->stream << self->id << self->data.length() << self->data;
+
+                            std::cout << "LEN: " << self->stream.length() << std::endl;
                         }
 
-                        public: void parse_input() const
+                        public: void unpack() const
                         {
                             auto self = *this;
 
-                            if(self->stream.get_buffer().in_avail())
-                            {
-                                std::istream data_stream(&self->stream.get_buffer());
+                            //if(self->stream.get_buffer().in_avail())
+                            //{
+                                //std::istream data_stream(&self->stream.get_buffer());
+std::cout << "11" << std::endl;
+self->stream->little_endian = true;
+                                //data = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
+                                if(self->stream.available() >= 8)
+                                {
+                                    //byte message_id;
+                                    //byte message_length;
+                                    //byte messade_data[message_length];
+std::cout << "14" << std::endl;
+                                    self->stream >> self->id;
+                                    self->stream >> self->length;
+std::cout << "13" << std::endl;
+                                    if(self->stream.available() >= self->length)
+                                    {
 
-                                //self->content = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
+                                    //self->message_id = read_int32(message_id);
+                                    //self->message_length = read_int32(message_length);
 
-                            }
+                                    //data_stream.get(messade_data, message_length);
 
+                                        self->data = byte_array(self->stream, self->length);
+                                    }
+
+                                    //successful_handler(message_id, message_data);
+                                }
+                            //}
+std::cout << "12" << std::endl;
                         }
 
                         private: struct variables
@@ -1735,8 +1939,10 @@ namespace nextgen
 
                             }
 
-                            content_type content;
-                            stream_type stream;
+                            uint32_t id;
+                            uint32_t length;
+                            byte_array data;
+                            byte_array stream;
                         };
 
                         NEXTGEN_SHARED_DATA(message, variables);
@@ -1766,12 +1972,12 @@ namespace nextgen
                         {
                             auto self = *this;
 
-                            request_.parse_output();
+                            request_.pack();
 
-                            self.send(request_.get_stream(), successful_handler, failure_handler);
+                            self.send(request_->stream.get_buffer(), successful_handler, failure_handler);
                         }
 
-                        public: virtual void send(stream_type stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
+                        public: template<typename stream_type> void send(stream_type& stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
                         {
                             auto self = *this;
 
@@ -1802,15 +2008,26 @@ namespace nextgen
                             if(failure_handler == 0)
                                 failure_handler = self->receive_failure_event;
 
-                            message_type response2;
-                            auto response = response2; // bugfix(daemn) weird lambda stack bug, would only accept PBR
+                            //byte_array s;//stream_type s;
 
-                            self->transport_layer_.receive("#all#", response.get_stream(),
+                            message_type response2;
+                            auto response = response2; // bugfix(daemn)
+
+                            self->transport_layer_.receive("#all#", response->stream.get_buffer(),
                             [=]()
                             {
-                                response.parse_input();
+                                //std::istream data_stream(&s.get_buffer());
+
+                                //string content = string((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
+
+                                //read_int32(s
+std::cout << "9" << std::endl;
+                                response.unpack();
+std::cout << "10" << std::endl;
 
                                 successful_handler(response);
+
+                                self.receive(successful_handler, failure_handler);
                             },
                             [=]()
                             {
@@ -1951,13 +2168,18 @@ namespace nextgen
             {
                 auto self = *this;
 
-                self->x = v->x;
-                self->y = v->y;
-                self->z = v->z;
-                self->w = v->w;
+                self->x_ = v->x_;
+                self->y_ = v->y_;
+                self->z_ = v->z_;
+                self->w_ = v->w_;
 
                 return self;
             }
+
+            public: element_type& x() { auto self = *this; return self->x_; }
+            public: element_type& y() { auto self = *this; return self->y_; }
+            public: element_type& z() { auto self = *this; return self->z_; }
+            public: element_type& w() { auto self = *this; return self->w_; }
 
             //private: friend std::ostream& operator<<(std::ostream&, const vector<element_type>&);
             private: template<typename y> friend vector<y> operator+(vector<y>, vector<y>);
@@ -1971,12 +2193,12 @@ namespace nextgen
 
             private: struct variables
             {
-                variables(element_type const x = 0, element_type const y = 0, element_type const z = 0, element_type const w = 0)
+                variables(element_type const x_ = 0, element_type const y_ = 0, element_type const z_ = 0, element_type const w_ = 0)
                 {
-                    this->x = x;
-                    this->y = y;
-                    this->z = z;
-                    this->w = w;
+                    this->x_ = x_;
+                    this->y_ = y_;
+                    this->z_ = z_;
+                    this->w_ = w_;
                 }
 
                 ~variables()
@@ -1984,10 +2206,10 @@ namespace nextgen
 
                 }
 
-                element_type x;
-                element_type y;
-                element_type z;
-                element_type w;
+                element_type x_;
+                element_type y_;
+                element_type z_;
+                element_type w_;
             };
 
             NEXTGEN_SHARED_DATA(vector, variables);
@@ -2055,10 +2277,10 @@ namespace nextgen
         template <typename element_type>
         inline vector<element_type> operator--(vector<element_type> v)
         {
-            v->x = --v->x;
-            v->y = --v->y;
-            v->z = --v->z;
-            v->w = --v->w;
+            v->x_ = --v->x_;
+            v->y_ = --v->y_;
+            v->z_ = --v->z_;
+            v->w_ = --v->w_;
 
             return v;
         }
@@ -2066,10 +2288,10 @@ namespace nextgen
         template <typename element_type>
         inline vector<element_type> operator++(vector<element_type> v)
         {
-            v->x = ++v->x;
-            v->y = ++v->y;
-            v->z = ++v->z;
-            v->w = ++v->w;
+            v->x_ = ++v->x_;
+            v->y_ = ++v->y_;
+            v->z_ = ++v->z_;
+            v->w_ = ++v->w_;
 
             return v;
         }

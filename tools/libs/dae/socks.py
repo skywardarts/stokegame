@@ -137,6 +137,7 @@ class network_socket(socket.socket):
 			try:
 				self.socket.getpeername()
 			except socket.error, (number, message):
+				print "errortastic"
 				return False
 			else:
 				return True
@@ -307,7 +308,7 @@ class network_socket(socket.socket):
 	
 	def accept(self):
 		sock, (host, port) = socket.socket.accept(self.socket)
-		
+
 		debug.log <> "Accepting connection from " + host + ":" + str(port) + " on " + self.source.host + ":" + str(self.source.port) + " ..."
 		
 		return sock, (host, port)

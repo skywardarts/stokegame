@@ -294,7 +294,7 @@ function AC_GetArgs(args, ext, srcParamName, classid, mimeType){
 		'align', 'middle',
 		'play', 'true',
 		'loop', 'true',
-		'scale', 'exactFit',
+		'scale', 'showall',
 		'wmode', 'gpu',
 		'devicefont', 'false',
 		'id', 'index',

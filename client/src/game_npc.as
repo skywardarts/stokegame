@@ -18,8 +18,8 @@ class game_npc extends game_object
 	{
 		//if(this.changed)
 		//{
-			var step:Number = time.elapsed_real_time / 10;
-			
+			/*var step:Number = time.elapsed_real_time / 10;
+
 			if(this.model.rotation.x == 1)
 			{
 				this.model.position.x += step;
@@ -35,7 +35,7 @@ class game_npc extends game_object
 			else if(this.model.rotation.y == -1)
 			{
 				this.model.position.y -= step;
-			}
+			}*/
 			
 			//this.changed = false;
 		//}

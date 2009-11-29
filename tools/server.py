@@ -157,6 +157,8 @@ class realm_server(object):
 		r, w, e = select.select(self.read, self.write, self.error, 0)
 	
 		for sock in e:
+			print "player left"
+			del self.player_list[sock]
 			self.player_list.remove(sock)
 			self.write.remove(sock)
 			self.read.remove(sock)
@@ -184,13 +186,15 @@ class realm_server(object):
 					
 					if available >= 8:
 						data = p.socket.read(8)
-
+						print "receiving: " + data
+						print ''.join(["\\x%02x" % ord( x ) for x in data]).strip()
 						messageID = struct.unpack(">i", data[:4])[0]
 						messageLength = struct.unpack(">i", data[4:8])[0]
 						
 						if available >= messageLength:
 							messageData = p.socket.read(messageLength)
-							
+							print "receiving: " + messageData
+							print ''.join(["\\x%02x" % ord( x ) for x in messageData]).strip()
 							if DEBUG1:
 								print "messageID: " + str(messageID)
 							if DEBUG1:
@@ -229,6 +233,8 @@ class realm_server(object):
 										packet += msg
 
 										p.socket.write(packet)
+
+										print "sending: " + packet
 									else:
 										p2.socket.write(new_player_packet)
 		
@@ -246,6 +252,7 @@ class realm_server(object):
 			
 								p.rotation.x, p.rotation.y = struct.unpack(">ii", messageData[:8])
 				else:
+					print "player left"
 					del self.player_list[sock]
 					self.read.remove(sock)
 
