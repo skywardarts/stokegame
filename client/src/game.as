@@ -90,7 +90,10 @@
 			debug.log("[engine:chat:event] Creating player... (#" + event.player.id + ")");
 			
 			if(event.control)
+			{
 				this.player = event.player;
+				this.world.scene.camera.model = this.player.model;
+			}
 			
 			this.world.add_player(event.player);
 			
@@ -117,8 +120,11 @@
 			{
 				debug.log("[engine:chat:event] Updating player position. (#" + player.id + ")");
 
-				player.model.position.x = event.position.x;
-				player.model.position.y = event.position.y;
+				//this.world.scene.camera.position.x = event.position.x;// - core_application.graphics.viewport.right / 2;
+				//this.world.scene.camera.position.y = event.position.y;// + core_application.graphics.viewport.bottom / 2;
+
+				player.position.x = event.position.x;
+				player.position.y = event.position.y;
 			}
 			else
 			{
@@ -207,8 +213,11 @@
 				this.update_keyboard();
 			}
 			
-			//if(this.player != null)
-				//trace(this.player.position.x + "/" + this.player.position.y);
+			if(this.player != null)
+			{
+				trace("play pos: " + this.player.position.x + "/" + this.player.position.y);
+			}
+				
 			
 			this.world.update(time);
 		}

@@ -13,12 +13,13 @@
   <externalLibraries editable="false"/>
   <compileList editable="false"/>
   <recentFiles editable="false">
-    <uri label="game_npc.as">file:///S|/projects/stokegame/client/src/game_npc.as</uri>
-    <uri label="game_player.as">file:///S|/projects/stokegame/client/src/game_player.as</uri>
     <uri label="game_world.as">file:///S|/projects/stokegame/client/src/game_world.as</uri>
-    <uri label="game.as">file:///S|/projects/stokegame/client/src/game.as</uri>
-    <uri label="chat_socket_stream.as">file:///S|/projects/stokegame/client/src/chat_socket_stream.as</uri>
+    <uri label="game_npc.as">file:///S|/projects/stokegame/client/src/game_npc.as</uri>
     <uri label="index.fla">file:///S|/projects/stokegame/client/index.fla</uri>
+    <uri label="game.as">file:///S|/projects/stokegame/client/src/game.as</uri>
+    <uri label="game_object.as">file:///S|/projects/stokegame/client/src/game_object.as</uri>
+    <uri label="game_player.as">file:///S|/projects/stokegame/client/src/game_player.as</uri>
+    <uri label="chat_socket_stream.as">file:///S|/projects/stokegame/client/src/chat_socket_stream.as</uri>
   </recentFiles>
   <locations editable="false"/>
 </projectDescription>

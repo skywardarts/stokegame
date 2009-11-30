@@ -2,12 +2,14 @@
 {
 	public var player_list:Array;
 	public var scene:graphics_scene;
+	public var map:game_object;
 	
 	public function game_world()
 	{
 		this.player_list = new Array();
 		this.scene = new graphics_scene();
-		
+		this.map = new game_object();
+		this.map.model.display = new kanto(0, 0); // todo(daemn) temp
 	}
 	
 	public function get_player(id:int):game_player
@@ -33,8 +35,12 @@
 	
 	public function update(time:core_timestamp):void
 	{
+		
+		
 		for each(var player:game_player in this.player_list)
 			player.update(time);
+			
+		this.scene.update(time);
 		
 /*
 		this.mc = new MovieClip();
@@ -63,6 +69,10 @@
 	
 	public function draw(device:graphics_device):void
 	{
+		var p:Point = new Point((this.scene.camera.position.x - (device.width / 2)) * -1, (this.scene.camera.position.y - device.height / 2) * -1 * -1);
+		trace("new cam pos: " + p);
+		device.display.screen.copyPixels(this.map.model.display, this.map.model.display.rect, p);
+		
 		this.scene.draw(device);
 	}
 }

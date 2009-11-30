@@ -181,7 +181,7 @@ std::cout << "10" << std::endl;
 
                                 player->id = random(10000, 99999);
                                 player->name = "Undefined";
-                                player->position = position_type::zero();
+                                player->position = position_type(1620, -4690);
                                 player->rotation = rotation_type::zero();
 
 
@@ -288,12 +288,12 @@ std::cout << "player pos: " << player->position.x() << " / " << player->position
                     {
                         std::cout << "Removing player Z" << std::endl;
 
-                        player_list_type::iterator i = std::find_if(self->player_list.begin(), self->player_list.end(), [=](game_player p) -> bool
+                        //player_list_type::iterator i = ;
+
+                        self->player_list.erase(std::find_if(self->player_list.begin(), self->player_list.end(), [=](game_player p) -> bool
                         {
                             return p == player;
-                        });
-
-                        self->player_list.erase(i);
+                        }));
 
 
                         network::ngp_message message;
