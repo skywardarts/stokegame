@@ -114,10 +114,22 @@ void write_int32(std::string& bits, uint32_t item)
             const uint32_t create_player = 3;
             const uint32_t update_player = 4;
             const uint32_t remove_player = 5;
+            const uint32_t load_object = 6;
+            const uint32_t load_resource = 7;
             const uint32_t update_player_position = 41;
             const uint32_t update_player_rotation = 42;
+
         }
 
+/**
+player connects
+server looks at player x/y, sends nearby players
+server looks at player x/y, sends nearby objects (building)
+server looks at player x/y, sends nearby npcs
+client requests resource
+server sends resource -tile- (resource id, width/height, resource data)
+client puts object together with resource id at x/y
+*/
         struct game_message
         {
             static const uint32_t keep_alive;
@@ -286,15 +298,12 @@ std::cout << "player pos: " << player->position.x() << " / " << player->position
                     },
                     [=]()
                     {
-                        std::cout << "Removing player Z" << std::endl;
-
-                        //player_list_type::iterator i = ;
+                        std::cout << "Removing player #" << player->id << std::endl;
 
                         self->player_list.erase(std::find_if(self->player_list.begin(), self->player_list.end(), [=](game_player p) -> bool
                         {
                             return p == player;
                         }));
-
 
                         network::ngp_message message;
 
@@ -305,10 +314,10 @@ std::cout << "player pos: " << player->position.x() << " / " << player->position
                         {
                             game_player player = (*i);
 
+                            std::cout << "Telling player #" << player->id << std::endl;
+
                             player->client.send(message);
                         }
-
-
                     });
                 });
             }
@@ -383,7 +392,7 @@ namespace stoke
 void stoke::game::run()
 {
     auto self = *this;
-
+/*
     nextgen::network::create_server<nextgen::network::http_client>(self->network_service, 80,
     [=](nextgen::network::http_client client)
     {
@@ -412,7 +421,7 @@ void stoke::game::run()
         {
 
         });
-    });
+    });*/
 
     nextgen::network::create_server<nextgen::network::xml_client>(self->network_service, 843,
     [=](nextgen::network::xml_client client)

@@ -377,7 +377,7 @@ class chat_socket_stream
 					trace("message_length: " + message_length);
 					trace("bytes_avail: " + self.data.bytesAvailable);
 
-					if(self.data.bytesAvailable >= message_length)
+					if(self.data.bytesAvailable > 0 && message_length > 0 && self.data.bytesAvailable >= message_length)
 					{
 						self.data.readBytes(message_data, 0, message_length);
 						
@@ -398,10 +398,10 @@ class chat_socket_stream
 					else
 					{
 						
-						self.data.position -= 8;
+						//self.data.position -= 8;
 						
-						self.data.writeInt(message_id);
-						self.data.writeInt(message_length);
+						//self.data.writeInt(message_id);
+						//self.data.writeInt(message_length);
 
 						processing = false;
 					}

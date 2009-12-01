@@ -30,9 +30,10 @@
 		{
 			var g:game = new game();
 			
-			core_application.initialize(mc);
+			g.application = core_application.get_instance();
 			
-			core_application.get_instance().add_component(g);
+			g.application.initialize(mc);
+			g.application.add_component(g);
 			
 			return g;
 		}
@@ -51,7 +52,7 @@
 		{
 			var domain:String = "174.1.141.120";//this.application.get_domain();
 			
-			debug.log("[engine:chat] Attempting to connect (" + domain + ":" + 6110 + ").");
+			debug.log("[stoke:realm_server] Attempting to connect (" + domain + ":" + 6110 + ").");
 			
 			Security.loadPolicyFile("xmlsocket://" + domain + ":" + "843");
 			
@@ -67,27 +68,14 @@
 			//var server:socket_stream = new socket_stream(
 		}
 		
-		/*
-		public function on_key_down(event:KeyboardEvent):void 
-		{
-			//debug.log("[engine:input] Key pressed: " + String.fromCharCode(event.charCode) + " (code: " + event.charCode + ")"); 
-			
-			this.keyboard.key_down(event);
-		}
-		
-		public function on_key_up(event:KeyboardEvent):void 
-		{
-			this.keyboard.key_up(event);
-		}*/
-		
 		public function on_keep_alive(event:keep_alive_event):void
 		{
-			debug.log("[engine:chat:event] Keep alive.");
+			debug.log("[stoke:realm_server] Keep alive.");
 		}
 		
 		public function on_create_player(event:create_player_event):void
 		{
-			debug.log("[engine:chat:event] Creating player... (#" + event.player.id + ")");
+			debug.log("[stoke:game_server] Creating player... (#" + event.player.id + ")");
 			
 			if(event.control)
 			{
@@ -101,7 +89,7 @@
 		
 		public function on_remove_player(event:remove_player_event):void
 		{
-			debug.log("[engine:chat:event] Removing player... (#" + event.player.id + ")");
+			debug.log("[stoke:game_server] Removing player... (#" + event.player.id + ")");
 			
 			this.world.remove_player(event.player);
 			
@@ -109,7 +97,7 @@
 		
 		public function on_update_player(event:update_player_event):void
 		{
-			debug.log("[engine:chat:event] Updating player...");
+			debug.log("[stoke:game_server] Updating player...");
 		}
 		
 		public function on_update_player_position(event:update_player_position_event):void
@@ -118,17 +106,14 @@
 			
 			if(player != null)
 			{
-				debug.log("[engine:chat:event] Updating player position. (#" + player.id + ")");
-
-				//this.world.scene.camera.position.x = event.position.x;// - core_application.graphics.viewport.right / 2;
-				//this.world.scene.camera.position.y = event.position.y;// + core_application.graphics.viewport.bottom / 2;
+				debug.log("[stoke:game_server] Updating player position. (#" + player.id + ")");
 
 				player.position.x = event.position.x;
 				player.position.y = event.position.y;
 			}
 			else
 			{
-				debug.log("[engine:chat:event] Error: Trying to change position of undefined player.");
+				debug.log("[stoke:game_server] Error: Trying to change position of undefined player.");
 			}
 		}
 		
@@ -139,49 +124,55 @@
 		
 		public function update_keyboard():void
 		{
-			var key_state:keyboard_state = core_application.get_keyboard().get_state();
+			var key_state:keyboard_state = this.application.keyboard.get_state();
+
+
 
 			if(this.player != null)
 			{
-				this.player.rotation.x = 0;
-				this.player.rotation.y = 0;
-	
 				if(key_state.is_key_down(key_code.w))
 				{
+					this.player.rotation.x = 0;
 					this.player.rotation.y = 1;
 				}
 				else if(key_state.is_key_down(key_code.d))
 				{
 					this.player.rotation.x = 1;
+					this.player.rotation.y = 0;
 				}
 				else if(key_state.is_key_down(key_code.s))
 				{
+					this.player.rotation.x = 0;
 					this.player.rotation.y = -1;
 				}
 				else if(key_state.is_key_down(key_code.a))
 				{
 					this.player.rotation.x = -1;
+					this.player.rotation.y = 0;
 				}
-
-				var message:update_player_rotation_event = new update_player_rotation_event();
 				
-				message.rotation = this.player.rotation;
-	
-				this.chat_client.send_message(message, 
-				function():void
+				if(this.player.rotation.changed)
 				{
-					//debug.log("[engine:chat] Successfully sent message.");
-				},
-				function():void
-				{
-					//debug.log("[engine:chat] Failed to send message.");
-				});
+					var message:update_player_rotation_event = new update_player_rotation_event();
+					
+					message.rotation = this.player.rotation;
+		
+					this.chat_client.send_message(message, 
+					function():void
+					{
+						//debug.log("[engine:chat] Successfully sent message.");
+					},
+					function():void
+					{
+						//debug.log("[engine:chat] Failed to send message.");
+					});
+				}
 			}
 		}
 		
 		public function connect_successful_handler():void
 		{
-			debug.log("[engine:chat] Successfully connected.");
+			debug.log("[stoke:realm_server] Successfully connected.");
 			
 			var message:login_event = new login_event();
 			
@@ -191,17 +182,17 @@
 			this.chat_client.send_message(message, 
 			function():void
 			{
-				debug.log("[engine:chat] Successfully logged in.");
+				debug.log("[stoke:realm_server] Successfully logged in.");
 			},
 			function():void
 			{
-				debug.log("[engine:chat] Failed to log in.");
+				debug.log("[stoke:realm_server] Failed to log in.");
 			});
 		}
 		
 		public function connect_failure_handler():void
 		{
-			debug.log("[engine:chat] Failed to connect.");
+			debug.log("[stoke:realm_server] Failed to connect.");
 		}
 
 		public function update(time:core_timestamp):void
@@ -233,6 +224,7 @@
 		
 		private var player:game_player = null;
 		private var world:game_world;
+		public var application:core_application;
 	}
 }
 

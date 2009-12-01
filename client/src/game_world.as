@@ -9,7 +9,7 @@
 		this.player_list = new Array();
 		this.scene = new graphics_scene();
 		this.map = new game_object();
-		this.map.model.display = new kanto(0, 0); // todo(daemn) temp
+		//this.map.model.display = new kanto(0, 0); // todo(daemn) temp
 	}
 	
 	public function get_player(id:int):game_player
@@ -71,7 +71,7 @@
 	{
 		var p:Point = new Point((this.scene.camera.position.x - (device.width / 2)) * -1, (this.scene.camera.position.y - device.height / 2) * -1 * -1);
 		trace("new cam pos: " + p);
-		device.display.screen.copyPixels(this.map.model.display, this.map.model.display.rect, p);
+		//device.display.screen.copyPixels(this.map.model.display, this.map.model.display.rect, p);
 		
 		this.scene.draw(device);
 	}
