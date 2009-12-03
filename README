@@ -1,18 +1,18 @@
 == Untitled Stoke Game Readme
-Copyright (C) 2009 Stoke Games (stokegames.com). All rights reserved.
-
 
 == License
 Untitled Stoke Game is released under the MIT license and is copyright (c) 2009 Stoke Games (stokegames.com). A copy of the MIT license can be found in the LICENSE file.
 
-== Build
+== Client
+Compiler: HaXe 2.04
+Platform: Ubuntu 9.1 with Geany 0.18
+Libraries: FlashX (latest), hxds (latest)
+ 
+== Server
 The mainline has been compiled/tested with:
 Compiler: GCC 4.5
 Platform: Ubuntu 9.1 with Code::Blocks 8.02
-
-== Prerequisites
-Server Libraries: Boost 1.40, Asio 1.4.1
-Client Libraries: FlashX (latest)
+Libraries: Boost 1.40, Asio 1.4.1
 
 == Templates
 
@@ -24,6 +24,7 @@ Client Libraries: FlashX (latest)
 
 
 == Profiling
+
 
 
 
