@@ -114,8 +114,8 @@ void write_int32(std::string& bits, uint32_t item)
             const uint32_t create_player = 3;
             const uint32_t update_player = 4;
             const uint32_t remove_player = 5;
-            const uint32_t load_object = 6;
-            const uint32_t load_resource = 7;
+            const uint32_t create_object = 6;
+            const uint32_t load_asset = 7;
             const uint32_t update_player_position = 41;
             const uint32_t update_player_rotation = 42;
 
@@ -249,36 +249,50 @@ std::cout << "10" << std::endl;
 
                                 int step = 10;
 
-                                request->data >> player->rotation.x() >> player->rotation.y();
-std::cout << "player rot: " << player->rotation.x() << " / " << player->rotation.y() << std::endl;
-                                //if(player->rotation->is_changed())
+                                int x, y;
+
+                                request->data >> x >> y;
+
+                                std::cout << "player rot: " << x << " / " << y << std::endl;
+
+                                //if(player->rotation.x() != x && player->rotation.y() != y)
                                 //{
-                                    if(player->rotation.x() == 1)
-                                        player->position.x() += step;
-                                    else if(player->rotation.x() == -1)
-                                        player->position.x() -= step;
-                                    else if(player->rotation.y() == 1)
-                                        player->position.y() += step;
-                                    else if(player->rotation.y() == -1)
-                                        player->position.y() -= step;
+                                    player->rotation.x(x);
+                                    player->rotation.y(y);
 
 
-                               //}
-std::cout << "player pos: " << player->position.x() << " / " << player->position.y() << std::endl;
+                                    //if(player->rotation->is_changed())
+                                    //{
+                                        if(player->rotation.x() == 1)
+                                            player->position.x(player->position.x() + step);
+                                        else if(player->rotation.x() == -1)
+                                            player->position.x(player->position.x() - step);
+                                        else if(player->rotation.y() == 1)
+                                            player->position.y(player->position.y() + step);
+                                        else if(player->rotation.y() == -1)
+                                            player->position.y(player->position.y() - step);
 
-                                {
-                                    network::ngp_message message;
 
-                                    message->id = realm_message::update_player_position;
-                                    message->data << player->id << player->position.x() << player->position.y();
+                                   //}
+    std::cout << "player pos: " << player->position.x() << " / " << player->position.y() << std::endl;
 
-                                    for(player_list_type::iterator i = self->player_list.begin(), l = self->player_list.end(); i != l; ++i)
                                     {
-                                        game_player player = (*i);
+                                        if(player->position.is_changed())
+                                        {
+                                            network::ngp_message message;
 
-                                        player->client.send(message);
+                                            message->id = realm_message::update_player_position;
+                                            message->data << player->id << player->position.x() << player->position.y();
+
+                                            for(player_list_type::iterator i = self->player_list.begin(), l = self->player_list.end(); i != l; ++i)
+                                            {
+                                                game_player player = (*i);
+
+                                                player->client.send(message);
+                                            }
+                                        }
                                     }
-                                }
+                                //}
 /*
                                 {
                                     network::ngp_message message;
@@ -293,30 +307,33 @@ std::cout << "player pos: " << player->position.x() << " / " << player->position
                                 break;
                             }
                         }
-
-
                     },
                     [=]()
                     {
                         std::cout << "Removing player #" << player->id << std::endl;
 
-                        self->player_list.erase(std::find_if(self->player_list.begin(), self->player_list.end(), [=](game_player p) -> bool
+                        auto i = std::find_if(self->player_list.begin(), self->player_list.end(), [=](game_player p) -> bool
                         {
                             return p == player;
-                        }));
+                        });
 
-                        network::ngp_message message;
-
-                        message->id = realm_message::remove_player;
-                        message->data << player->id;
-
-                        for(player_list_type::iterator i = self->player_list.begin(), l = self->player_list.end(); i != l; ++i)
+                        if(i != self->player_list.end())
                         {
-                            game_player player = (*i);
+                            self->player_list.erase(i);
 
-                            std::cout << "Telling player #" << player->id << std::endl;
+                            network::ngp_message message;
 
-                            player->client.send(message);
+                            message->id = realm_message::remove_player;
+                            message->data << player->id;
+
+                            for(player_list_type::iterator i = self->player_list.begin(), l = self->player_list.end(); i != l; ++i)
+                            {
+                                game_player player = (*i);
+
+                                std::cout << "Telling player #" << player->id << std::endl;
+
+                                player->client.send(message);
+                            }
                         }
                     });
                 });

@@ -1,0 +1,1 @@
+haxe -swf ../bin/client.swf -main Client -swf-header 200:300:40:FF0000

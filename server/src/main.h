@@ -2124,6 +2124,13 @@ std::cout << "10" << std::endl;
     }
 }
 
+namespace nextgen
+{
+    namespace content
+    {
+
+    }
+}
 
 namespace nextgen
 {
@@ -2176,10 +2183,17 @@ namespace nextgen
                 return self;
             }
 
-            public: element_type& x() { auto self = *this; return self->x_; }
-            public: element_type& y() { auto self = *this; return self->y_; }
-            public: element_type& z() { auto self = *this; return self->z_; }
-            public: element_type& w() { auto self = *this; return self->w_; }
+            public: element_type x() { auto self = *this; return self->x_; }
+            public: element_type y() { auto self = *this; return self->y_; }
+            public: element_type z() { auto self = *this; return self->z_; }
+            public: element_type w() { auto self = *this; return self->w_; }
+
+            public: void x(element_type x_) { auto self = *this; if(x_ != self->x_) { self->x_ = x_; self->changed = true; } }
+            public: void y(element_type y_) { auto self = *this; if(y_ != self->y_) { self->y_ = y_; self->changed = true; } }
+            public: void z(element_type z_) { auto self = *this; if(z_ != self->z_) { self->z_ = z_; self->changed = true; } }
+            public: void w(element_type w_) { auto self = *this; if(w_ != self->w_) { self->w_ = w_; self->changed = true; } }
+
+            public: bool is_changed() { auto self = *this; return self->changed; }
 
             //private: friend std::ostream& operator<<(std::ostream&, const vector<element_type>&);
             private: template<typename y> friend vector<y> operator+(vector<y>, vector<y>);
@@ -2193,7 +2207,7 @@ namespace nextgen
 
             private: struct variables
             {
-                variables(element_type const x_ = 0, element_type const y_ = 0, element_type const z_ = 0, element_type const w_ = 0)
+                variables(element_type const x_ = 0, element_type const y_ = 0, element_type const z_ = 0, element_type const w_ = 0) : changed(true)
                 {
                     this->x_ = x_;
                     this->y_ = y_;
@@ -2210,6 +2224,7 @@ namespace nextgen
                 element_type y_;
                 element_type z_;
                 element_type w_;
+                bool changed;
             };
 
             NEXTGEN_SHARED_DATA(vector, variables);
