@@ -1,11 +1,12 @@
 -cp ../../../lib
--cp ../../flashx/src
+-cp ../../flaxe/src
 -cp src
--swf-header 1024:800:32:000000
+-swf-header 1024:800:32:FF0000
 -swf bin/index.swf
 -swf-version 10
 -D network-sandbox
 -debug
 #-D mydebug
 #--no-traces
+
 -main Main.hx

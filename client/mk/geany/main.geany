@@ -10,12 +10,8 @@ indent_mode=2
 name=main
 base_path=/home/daemn/projects/stokegame/client/
 make_in_base_path=false
+description=
+run_cmd=
 
 [files]
-current_page=0
-FILE_NAME_0=815;Haxe;0;16;1;1;0;/home/daemn/projects/stokegame/client/src/game.hx;0
-FILE_NAME_1=0;Haxe;0;16;1;1;0;/home/daemn/projects/stokegame/client/src/game_npc.hx;0
-FILE_NAME_2=0;Haxe;0;16;1;1;0;/home/daemn/projects/stokegame/client/src/game_object.hx;0
-FILE_NAME_3=0;Haxe;0;16;1;1;0;/home/daemn/projects/stokegame/client/src/game_player.hx;0
-FILE_NAME_4=0;Haxe;0;16;1;1;0;/home/daemn/projects/stokegame/client/src/game_world.hx;0
-FILE_NAME_5=0;Haxe;0;16;1;1;0;/home/daemn/projects/stokegame/client/src/map_editor.hx;0
+current_page=-1

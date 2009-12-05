@@ -2,34 +2,21 @@
 
 namespace nextgen
 {
-    namespace engine
+    class asset
     {
-        class game_object
+
+    };
+}
+
+namespace nextgen
+{
+    namespace content
+    {
+        class tile_asset
         {
-
-        };
-
-        class game_npc : public game_object
-        {
-            public: typedef uint32_t id_type;
-            public: typedef string name_type;
-            public: typedef int vector_type;
-            public: typedef math::vector<vector_type> position_type;
-            public: typedef math::vector<vector_type> rotation_type;
-        };
-
-        class game_monster : public game_npc
-        {
-
-        };
-
-        class game_player : public game_npc
-        {
-            public: typedef network::ngp_client client_type;
-
             private: struct variables
             {
-                variables(client_type client) : id(0), name("Undefined"), client(client)
+                variables()
                 {
 
                 }
@@ -39,34 +26,189 @@ namespace nextgen
 
                 }
 
-                id_type id;
-                name_type name;
-                position_type position;
-                rotation_type rotation;
-                client_type client;
+                uint32_t id;
+                string data;
             };
 
-            NEXTGEN_SHARED_DATA(game_player, variables);
+            NEXTGEN_SHARED_DATA(tile_asset, variables);
         };
 
-struct testing_message_base
+        class service
+        {
+            public: template<typename element_type> element_type get_asset(string const& name)
+            {
+                auto self = *this;
+
+                if(self->asset_list.size() > 0)
+                {
+                    if(auto i = self->asset_list.find(name) != self->asset_list.end())
+                    {
+                        return self->asset_list[name];
+                    }
+                }
+
+                std::ifstream f;
+                f.open(name, std::ios::in | std::ios::binary);
+
+                if(f.is_open())
+                {
+                    // get length of file:
+                    f.seekg(0, std::ios::end);
+                    size_t length = f.tellg();
+                    f.seekg(0, std::ios::beg);
+
+                    element_type e;
+
+                    // read data as a block:
+                    char data[length];
+                    f.read(data, length);
+
+                    f.close();
+
+                    e->data = string(data);
+
+                    return e;
+                }
+                else
+                {
+                    throw "File not open.";
+                }
+
+
+            }
+
+            private: struct variables
+            {
+                variables()
+                {
+
+                }
+
+                ~variables()
+                {
+
+                }
+
+                hash_map<string, tile_asset> asset_list;
+            };
+
+            NEXTGEN_SHARED_DATA(service, variables);
+        };
+
+    }
+}
+
+namespace nextgen
 {
-    int id;
-    int length;
-};
+    namespace graphics
+    {
+        class tile
+        {
 
-struct testing_message
+        };
+    }
+}
+
+namespace nextgen
 {
-    int player_id;
-    int name_length;
-    int position_x;
-    int position_y;
-    int rotation_x;
-    int rotation_y;
-    bool something;
-};
+    namespace engine
+    {
+            class game_object
+            {
+                public: typedef uint32_t id_type;
+                public: typedef string name_type;
+                public: typedef int vector_type;
+                public: typedef math::vector<vector_type> position_type;
+                public: typedef math::vector<vector_type> rotation_type;
 
+                private: struct variables
+                {
+                    variables() : id(0), name("Object")
+                    {
 
+                    }
+
+                    ~variables()
+                    {
+
+                    }
+
+                    id_type id;
+                    name_type name;
+                    position_type position;
+                    rotation_type rotation;
+                    content::tile_asset model;
+                };
+
+                NEXTGEN_SHARED_DATA(game_object, variables);
+            };
+
+            class game_npc
+            {
+                public: typedef uint32_t id_type;
+                public: typedef string name_type;
+                public: typedef int vector_type;
+                public: typedef math::vector<vector_type> position_type;
+                public: typedef math::vector<vector_type> rotation_type;
+
+                private: struct variables
+                {
+                    variables() : id(0), name("Undefined")
+                    {
+
+                    }
+
+                    ~variables()
+                    {
+
+                    }
+
+                    id_type id;
+                    name_type name;
+                    position_type position;
+                    rotation_type rotation;
+                };
+
+                NEXTGEN_SHARED_DATA(game_npc, variables);
+            };
+
+            class game_monster
+            {
+
+            };
+
+            class game_player
+            {
+                public: typedef uint32_t id_type;
+                public: typedef string name_type;
+                public: typedef int vector_type;
+                public: typedef math::vector<vector_type> position_type;
+                public: typedef math::vector<vector_type> rotation_type;
+                public: typedef network::ngp_client client_type;
+
+                private: struct variables
+                {
+                    variables(client_type client) : id(0), name("Undefined"), client(client)
+                    {
+
+                    }
+
+                    ~variables()
+                    {
+
+                    }
+
+                    id_type id;
+                    name_type name;
+                    position_type position;
+                    rotation_type rotation;
+                    client_type client;
+                };
+
+                NEXTGEN_SHARED_DATA(game_player, variables);
+            };
+
+/*
 template <typename integer_type>
 void read_int(integer_type& result, const unsigned char* bits, bool little_endian = false)
 {
@@ -105,17 +247,24 @@ void write_int32(std::string& bits, uint32_t item)
     bytes[3] = (item >> 24) & 0xFF;
 
     bits += std::string(bytes, 4);
-}
+}*/
 
         namespace realm_message
         {
             const uint32_t keep_alive = 1;
             const uint32_t user_login = 2;
-            const uint32_t create_player = 3;
-            const uint32_t update_player = 4;
-            const uint32_t remove_player = 5;
+            const uint32_t create_world = 3;
+            const uint32_t update_world = 4;
+            const uint32_t remove_world = 5;
             const uint32_t create_object = 6;
-            const uint32_t load_asset = 7;
+            const uint32_t update_object = 7;
+            const uint32_t remove_object = 8;
+            const uint32_t create_player = 9;
+            const uint32_t update_player = 10;
+            const uint32_t remove_player = 11;
+            const uint32_t chat_message = 12;
+            const uint32_t load_asset = 13;
+
             const uint32_t update_player_position = 41;
             const uint32_t update_player_rotation = 42;
 
@@ -153,6 +302,18 @@ client puts object together with resource id at x/y
             public: void initialize()
             {
                 auto self = *this;
+
+                auto bush1_asset = self->content_service.get_asset<nextgen::content::tile_asset>("data/graphics/environment/bush1.png");
+                bush1_asset->id = 1;
+
+                game_object bush1;
+                bush1->id = 1;
+                bush1->name = "bush1";
+                bush1->position.x(1620);
+                bush1->position.y(-4690);
+                bush1->model = bush1_asset;
+
+                self->object_list.push_back(bush1);
 
 
                 network::create_server<network::ngp_client>(self->network_service, 6110,
@@ -197,6 +358,18 @@ std::cout << "10" << std::endl;
                                 player->rotation = rotation_type::zero();
 
 
+
+                                // create world for new player
+                                {
+                                    network::ngp_message message;
+
+                                    message->id = realm_message::create_world;
+                                    message->data << 1;
+                                    message->data << random(10000, 99999);
+
+                                    client.send(message);
+                                }
+
                                 {
                                     network::ngp_message old_message;
 
@@ -219,7 +392,7 @@ std::cout << "10" << std::endl;
 
                                         // show the new player for old players
                                         {
-
+                                            std::cout << "Showing player #" << player->id << " to player #" << old_player->id << std::endl;
                                             old_player->client.send(old_message);
                                         }
                                     }
@@ -227,12 +400,23 @@ std::cout << "10" << std::endl;
 
                                 self->player_list.push_back(player);
 
+
                                 // show the new player to self
                                 {
                                     network::ngp_message message;
 
                                     message->id = realm_message::create_player;
                                     message->data << player->id << player->name.length() << player->name << player->position.x() << player->position.y() << player->rotation.x() << player->rotation.y() << true;
+
+                                    client.send(message);
+                                }
+
+                                // send the bush to new player
+                                {
+                                    network::ngp_message message;
+
+                                    message->id = realm_message::create_object;
+                                    message->data << bush1->id << bush1->position.x() << bush1->position.y() << bush1->rotation.x() << bush1->rotation.y() << bush1->model->id;
 
                                     client.send(message);
                                 }
@@ -341,7 +525,7 @@ std::cout << "10" << std::endl;
 
             private: struct variables
             {
-                variables(network_service_type network_service) : network_service(network_service)
+                variables(network_service_type network_service, content::service content_service) : network_service(network_service), content_service(content_service)
                 {
 
                 }
@@ -351,8 +535,11 @@ std::cout << "10" << std::endl;
 
                 }
 
+                content::service content_service;
                 network_service_type network_service;
                 player_list_type player_list;
+                array<game_object> object_list;
+                array<game_npc> npc_list;
             };
 
             NEXTGEN_SHARED_DATA(game_world, variables,
@@ -383,7 +570,7 @@ namespace stoke
 
         private: struct variables
         {
-            variables() : world(network_service)
+            variables() : world(network_service, content_service)
             {
 
             }
@@ -394,6 +581,7 @@ namespace stoke
             }
 
             network_service_type network_service;
+            nextgen::content::service content_service;
             game_world_type world;
         };
 
