@@ -165,6 +165,44 @@ class Client
 		this.world_server.create_object_event.add(this.on_create_object);
 	}
 	
+	public function draw(device:flaxe.graphics.Device):Void
+	{
+		for(object in this.object_list)
+		{
+			if(object.x + object.width >= this.scene.camera.x - device.width / 2
+			   && object.y + object.height >= this.scene.camera.y - device.height / 2
+			   && object.x - object.width <= this.scene.camera.x + device.width / 2
+			   && object.y - object.height <= this.scene.camera.y + device.height / 2)
+			{
+				this.scene.add_model(object.model);
+			}
+		}
+		
+		for(player in this.player_list)
+		{
+			if(player.x + player.width >= this.scene.camera.x - device.width / 2
+			   && player.y + player.height >= this.scene.camera.y - device.height / 2
+			   && player.x - player.width <= this.scene.camera.x + device.width / 2
+			   && player.y - player.height <= this.scene.camera.y + device.height / 2)
+			{
+				this.scene.add_model(player.model);
+			}
+		}
+		
+		for(npc in this.npc_list)
+		{
+			if(npc.x + npc.width >= this.scene.camera.x - device.width / 2
+			   && npc.y + npc.height >= this.scene.camera.y - device.height / 2
+			   && npc.x - npc.width <= this.scene.camera.x + device.width / 2
+			   && npc.y - npc.height <= this.scene.camera.y + device.height / 2)
+			{
+				this.scene.add_model(npc.model);
+			}
+		}
+		
+		this.scene.draw(device);
+	}
+	
 	public function update_input():Void
 	{
 		var key_state:flaxe.input.KeyState = this.input_service.get_key_state();
@@ -221,29 +259,21 @@ class Client
 	public function on_create_player(player:flaxe.game.Player):Void
 	{
 		trace("[stoke:world_server] Created player... (#" + player.id + ")");
-		
 
 		if(player.controlled)
 		{
 			this.target_player = player;
 			this.scene.camera.target = player;
 		}
-		
-
 	}
 	
 	public function on_create_object(object:flaxe.game.Object):Void
 	{
 		trace("[stoke:world_server] Created object... (#" + object.id + ")");
-		
-
 	}
 	
 	public function on_remove_player(player:flaxe.game.Player):Void
 	{
 		trace("[stoke:world_server] Removing player... (#" + player.id + ")");
-		
-		
 	}
-	
 }

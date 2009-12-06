@@ -2,7 +2,7 @@ package stoke;
 
 import stoke.WorldEvents;
 
-class WorldServer
+class WorldSession
 {
 	public var create_player_event:CreatePlayerEvent;
 	public var remove_player_event:RemovePlayerEvent;
@@ -62,21 +62,20 @@ class WorldServer
 							case WorldEvents.create_object:
 								trace("create_object");
 
-								var event = self.create_object_event;
-
-								event.unpack(event_data);
-
 								var object = new flaxe.game.Object();
 								
-								object.id = event.object_id;
-								object.position.x = event.object_position_x;
-								object.position.y = event.object_position_y;
-								object.rotation.x = event.object_rotation_x;
-								object.rotation.y = event.object_rotation_y;
+								object.id = event_data.readInt();
+								object.position.x = data.readInt();
+								object.position.y = data.readInt();
+								object.rotation.x = data.readInt();
+								object.rotation.y = data.readInt();
+								
+								// find model
+								var model_id = data.readInt();
 								
 								self.add_object(object);
 
-								event.call_with([object]);
+								self.create_object_event.call_with([object]);
 								
 							case WorldEvents.update_object:
 								trace("update_object");
@@ -87,23 +86,22 @@ class WorldServer
 							case WorldEvents.create_player: 
 								trace("create_player");
 
-								var event = self.create_player_event;
-
-								event.unpack(event_data);
-								
 								var player = new flaxe.game.Player();
 								
-								player.id = event.player_id;
-								player.name = event.player_name;
-								player.position.x = event.player_position_x;
-								player.position.y = event.player_position_y;
-								player.rotation.x = event.player_rotation_x;
-								player.rotation.y = event.player_rotation_y;
-								player.controlled = event.control;
+								player.id = data.readInt();
+								
+								var player_name_length:Int = data.readInt();
+								
+								player.name = data.readUTFBytes(player_name_length);
+								player.position.x = data.readInt();
+								player.position.y = data.readInt();
+								player.rotation.x = data.readInt();
+								player.rotation.y = data.readInt();
+								player.controlled = data.readBoolean();
 								
 								self.add_player(player);
 								
-								event.call_with([player]);
+								self.create_player_event.call_with([player]);
 							
 							case WorldEvents.update_player:
 								trace("update_player");
@@ -111,13 +109,13 @@ class WorldServer
 							case WorldEvents.remove_player:
 								trace("remove_player");
 								
-								var event = self.remove_player_event;
+								//var event = self.remove_player_event;
 								
-								event.unpack(event_data);
+								//event.unpack(event_data);
 								
-								var player = self.remove_player(self.find_player(event.player_id));
+								//var player = self.remove_player(self.find_player(event.player_id));
 								
-								event.call_with([player]);
+								//event.call_with([player]);
 							
 							default:
 								trace("default");

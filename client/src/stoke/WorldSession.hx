@@ -2,10 +2,8 @@ package stoke;
 
 import stoke.WorldEvents;
 
-class WorldServer
+class WorldSession
 {
-	public var keep_alive_event:KeepAliveEvent;
-	public var create_world_event:CreateWorldEvent;
 	public var create_player_event:CreatePlayerEvent;
 	public var remove_player_event:RemovePlayerEvent;
 	public var create_object_event:CreateObjectEvent;
@@ -20,12 +18,9 @@ class WorldServer
 		this.host = host;
 		this.port = port;
 		
-		this.keep_alive_event = new KeepAliveEvent();
-		this.create_world_event = new CreateWorldEvent();
 		this.create_player_event = new CreatePlayerEvent();
 		this.remove_player_event = new RemovePlayerEvent();
 		this.create_object_event = new CreateObjectEvent();
-		
 		
 		this.connection = new flaxe.network.Socket(host, port);
 	}
@@ -64,32 +59,23 @@ class WorldServer
 						
 						switch(event_id)
 						{
-							case WorldEvents.keep_alive:
-								trace("keep_alive");
-
-								self.keep_alive_event.unpack(event_data);
-								self.keep_alive_event.call();
-								
-							case WorldEvents.user_login:
-								trace("user_login");
-								
-							case WorldEvents.create_world:
-								trace("create_world");
-
-								self.create_world_event.unpack(event_data);
-								self.create_world_event.call();
-								
-							case WorldEvents.update_world:
-								trace("update_world");
-								
-							case WorldEvents.remove_world:
-								trace("remove_world");
-								
 							case WorldEvents.create_object:
 								trace("create_object");
 
-								self.create_object_event.unpack(event_data);
-								self.create_object_event.call();
+								var object = new flaxe.game.Object();
+								
+								object.id = event_data.readInt();
+								object.position.x = data.readInt();
+								object.position.y = data.readInt();
+								object.rotation.x = data.readInt();
+								object.rotation.y = data.readInt();
+								
+								// find model
+								var model_id = data.readInt();
+								
+								self.add_object(object);
+
+								self.create_object_event.call_with([object]);
 								
 							case WorldEvents.update_object:
 								trace("update_object");
@@ -100,8 +86,22 @@ class WorldServer
 							case WorldEvents.create_player: 
 								trace("create_player");
 
-								self.create_player_event.unpack(event_data);
-								self.create_player_event.call();
+								var player = new flaxe.game.Player();
+								
+								player.id = data.readInt();
+								
+								var player_name_length:Int = data.readInt();
+								
+								player.name = data.readUTFBytes(player_name_length);
+								player.position.x = data.readInt();
+								player.position.y = data.readInt();
+								player.rotation.x = data.readInt();
+								player.rotation.y = data.readInt();
+								player.controlled = data.readBoolean();
+								
+								self.add_player(player);
+								
+								self.create_player_event.call_with([player]);
 							
 							case WorldEvents.update_player:
 								trace("update_player");
@@ -109,20 +109,14 @@ class WorldServer
 							case WorldEvents.remove_player:
 								trace("remove_player");
 								
-								self.remove_player_event.unpack(event_data);
-								self.remove_player_event.call();
+								//var event = self.remove_player_event;
+								
+								//event.unpack(event_data);
+								
+								//var player = self.remove_player(self.find_player(event.player_id));
+								
+								//event.call_with([player]);
 							
-							case WorldEvents.chat_message:
-								trace("chat_message");
-							
-								var player_id:Int = event_data.readInt();
-								var message_length:Int = event_data.readInt();
-								var message_text = event_data.readUTFBytes(message_length);
-								
-								
-
-								// todo(daemn) parse message text for linked items/etc.
-								
 							default:
 								trace("default");
 						}
@@ -173,5 +167,10 @@ class WorldServer
 		{
 			failure();
 		});
-	}	
+	}
+	
+	public function update(time:flaxe.core.Timestamp):Void
+	{
+		for(player
+	}
 }

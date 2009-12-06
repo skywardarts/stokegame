@@ -1,4 +1,115 @@
 
+
+
+// game object components
+
+class WorldSession
+{
+	public function new()
+	{
+
+	}
+	
+	public function initialize(GameObject object)
+	{
+		this.object = object;
+		this.object.load_event.add(this.on_load, []);
+		
+	}
+	
+	public function on_load():Void
+	{
+		if(this.object.position != null)
+			this.object.position.change_event.add(this.on_change, []);
+	}
+	
+	public function on_change_position():Void
+	{
+		this.dirty_position = true;
+	}
+	
+	public function update():Void
+	{
+		this.service.
+	}
+	
+	public var object:GameObject;
+}
+
+
+class Control
+{
+	public function new()
+	{
+
+	}
+	
+	public function initialize(GameObject object)
+	{
+		this.object = object;
+		this.object.load_event.add(this.on_load, []);
+		
+	}
+	
+	public function on_load():Void
+	{
+		
+	}
+	
+	public var object:GameObject;
+}
+
+class Move2D
+{
+	public function new()
+	{
+
+	}
+	
+	public function initialize(GameObject object)
+	{
+		this.object = object;
+		this.object.position = new Property(new Vector2());
+		this.object.load_event.add(this.on_load, []);
+	}
+	
+	public function on_load():Void
+	{
+		
+		
+	}
+	
+	public var object:GameObject;
+}
+
+
+
+
+class GameObject
+{
+	public function new()
+	{
+		this.component = new List<Dynamic>();
+	}
+	
+	
+	public function add_component(component:Dynamic)
+	{
+		this.component_list.add(component);
+	}
+	
+	public function update()
+	{
+		
+	}
+	
+	
+	public var component_list:List<Dynamic>;
+}
+
+
+
+
 typedef Point = {
 	var x : Int;
 	var y : Int;
@@ -79,7 +190,7 @@ class PhysicsBasicObject implements PhysicsObjectBase
 
 //typedef Jarad = {>O1, >O2}
 
-class GameObject implements GraphicsObjectBase, implements PhysicsObjectBase
+class GameObject2 implements GraphicsObjectBase, implements PhysicsObjectBase
 {
 	public var x:Int;
 	public var graphics:GraphicsObjectBase;
@@ -123,10 +234,10 @@ class Main
     {
 		trace("[stokegame] Initializing client...");
 		
-		var o = new GameObject(new GraphicsBasicObject(), new PhysicsBasicObject());
-		o.Render();
-		o.Collide();
-		trace(o);
+		//var o = new GameObject(new GraphicsBasicObject(), new PhysicsBasicObject());
+		//o.Render();
+		//o.Collide();
+		//trace(o);
 		
 		var mc:flash.display.MovieClip = flash.Lib.current;
 		
