@@ -1454,6 +1454,7 @@ std::cout << "1" << std::endl;
 
                                 string data((std::istreambuf_iterator<char>(data_stream)), std::istreambuf_iterator<char>());
 
+
                                 //if(http_version.substr(0, 5) != "HTTP/")
                                 //{
                                 //	std::cout << "Invalid response" << std::endl;
@@ -1532,10 +1533,10 @@ std::cout << "1" << std::endl;
                             network_layer_type address;
                             port_type port;
                             host_type host;
-                            stream_type stream;
                             string username;
                             string password;
                             string scheme;
+                            byte_array stream;
                         };
 
                         NEXTGEN_SHARED_DATA(message, variables);
@@ -1582,7 +1583,7 @@ std::cout << "1" << std::endl;
 
                             request_.pack();
 
-                            self.send(request_.get_stream().get_buffer(), successful_handler, failure_handler);
+                            self.send(request_->stream.get_buffer(), successful_handler, failure_handler);
                         }
 
                         public: template<typename stream_type> void send(stream_type& stream, send_successful_event_type successful_handler = 0, send_failure_event_type failure_handler = 0) const
@@ -1616,14 +1617,17 @@ std::cout << "1" << std::endl;
                             if(failure_handler == 0)
                                 failure_handler = self->receive_failure_event;
 
-                            message_type response;
+                            message_type response2;
+                            auto response = response2; // bugfix(daemn)
 
-                            self->transport_layer_.receive("#all#", response.get_stream().get_buffer(),
+                            self->transport_layer_.receive("#all#", response->stream.get_buffer(),
                             [=]()
                             {
                                 response.unpack();
 
                                 successful_handler(response);
+
+                                self.receive(successful_handler, failure_handler);
                             },
                             [=]()
                             {

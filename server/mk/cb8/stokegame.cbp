@@ -37,6 +37,9 @@
 			<Add option="-Wmain" />
 			<Add option="-Wfatal-errors" />
 			<Add option="-Wall" />
+			<Add option="-std=c++0x" />
+			<Add option="-pthread" />
+			<Add option="-lz \ `/usr/local/mysql/bin/mysql_config --include --libmysqld-libs`" />
 			<Add directory="../../../src" />
 		</Compiler>
 		<Linker>
