@@ -8,95 +8,6 @@ namespace nextgen
     };
 }
 
-namespace nextgen
-{
-    namespace content
-    {
-        class tile_asset
-        {
-            private: struct variables
-            {
-                variables()
-                {
-
-                }
-
-                ~variables()
-                {
-
-                }
-
-                uint32_t id;
-                string data;
-            };
-
-            NEXTGEN_SHARED_DATA(tile_asset, variables);
-        };
-
-        class service
-        {
-            public: template<typename element_type> element_type get_asset(string const& name)
-            {
-                auto self = *this;
-
-                if(self->asset_list.size() > 0)
-                {
-                    if(auto i = self->asset_list.find(name) != self->asset_list.end())
-                    {
-                        return self->asset_list[name];
-                    }
-                }
-
-                std::ifstream f;
-                f.open(name, std::ios::in | std::ios::binary);
-
-                if(f.is_open())
-                {
-                    // get length of file:
-                    f.seekg(0, std::ios::end);
-                    size_t length = f.tellg();
-                    f.seekg(0, std::ios::beg);
-
-                    element_type e;
-
-                    // read data as a block:
-                    char data[length];
-                    f.read(data, length);
-
-                    f.close();
-
-                    e->data = string(data);
-
-                    return e;
-                }
-                else
-                {
-                    throw "File not open.";
-                }
-
-
-            }
-
-            private: struct variables
-            {
-                variables()
-                {
-
-                }
-
-                ~variables()
-                {
-
-                }
-
-                hash_map<string, tile_asset> asset_list;
-            };
-
-            NEXTGEN_SHARED_DATA(service, variables);
-        };
-
-    }
-}
 
 namespace nextgen
 {
@@ -356,8 +267,6 @@ std::cout << "10" << std::endl;
                                 player->name = "Undefined";
                                 player->position = position_type(1620, -4690);
                                 player->rotation = rotation_type::zero();
-
-
 
                                 // create world for new player
                                 {

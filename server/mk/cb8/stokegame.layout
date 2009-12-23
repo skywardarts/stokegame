@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_layout_file>
 	<ActiveTarget name="Linux Debug" />
-	<File name="../../src/main.cpp" open="0" top="0" tabpos="2">
-		<Cursor position="16460" topLine="395" />
+	<File name="../../src/main.cpp" open="1" top="0" tabpos="3">
+		<Cursor position="7890" topLine="258" />
 	</File>
-	<File name="../../src/main.h" open="0" top="0" tabpos="1">
-		<Cursor position="46696" topLine="1319" />
+	<File name="../../src/main.h" open="1" top="1" tabpos="8">
+		<Cursor position="46414" topLine="1656" />
 	</File>
 </CodeBlocks_layout_file>
